@@ -1,0 +1,129 @@
+/* Universal CSS */
+
+:root {
+    --background-color: #1c1c1c;
+    --secondary-color: #252525;
+}
+
+* {
+    margin: 0;
+}
+
+html {
+    background: var(--background-color);
+    height: 100%;
+    overflow-x: hidden;
+}
+
+#wrapper {
+    min-height: 100%;
+    position: relative;
+}
+
+@supports (-moz-appearance: none) {
+    #wrapper {
+        min-height: 100vh;
+    }
+}
+
+body {
+    color: white;
+    background-color: var(--background-color);
+}
+
+/* Header CSS */
+header {
+    background-color: var(--secondary-color);
+}
+
+.header-bar {
+    font-size: 2rem;
+    justify-content: space-between;
+}
+
+/* Footer */
+footer {
+    background-color: var(--secondary-color);
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    min-height: 60px;
+    height: auto;
+    display: flex;
+}
+
+footer .copyright {
+    align-self: center;
+    display: flex;
+}
+
+footer .additional {
+    display: flex;
+    font-size: 10px;
+    vertical-align: center;
+    text-align: right;
+    align-self: center;
+    width: 236.7px;
+}
+
+@media only screen and (max-width: 1024px) {
+    footer .container {
+        flex-wrap: wrap;
+    }
+
+    footer .copyright {
+        justify-content: center;
+        text-align: center;
+    }
+
+    footer .additional {
+        text-align: center;
+        align-self: center;
+        justify-content: center;
+        width: 100%;
+    }
+}
+
+/* CSS to block the site from the evils of Internet Explorer */
+.ie-block {
+    display: none;
+}
+
+.ie-block-content {
+    display: none;
+}
+
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+
+    #ie-block {
+        display: block;
+        position: fixed;
+        width: 100%;
+        top: 0;
+        left: 0;
+        height: 100%;
+        z-index: 1000000000;
+        background-color: #1c1c1c;;
+    }
+
+    .ie-block-content {
+        display: block;
+        margin: 30px;
+        position: absolute;
+        top: 30%;
+        -ms-transform: translateY(-50%);
+        transform: translateY(-50%);
+    }
+
+    .ie-block-image {
+        transition: .2s;
+        height: 100px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .ie-block-image:hover {
+        transition: .2s;
+        transform: scale(1.1);
+    }
+}
