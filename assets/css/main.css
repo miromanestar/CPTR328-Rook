@@ -1,5 +1,4 @@
 /* Universal CSS */
-
 :root {
     --background-color: #1c1c1c;
     --secondary-color: #252525;
@@ -39,6 +38,45 @@ header {
 .header-bar {
     font-size: 2rem;
     justify-content: space-between;
+}
+
+.logo {
+    transition: .2s;
+}
+
+.logo:hover {
+    transform: scale(1.1);
+}
+
+.nav-link {
+    transition: .2s;
+}
+
+.nav-link:hover {
+    transform: scale(1.1);
+}
+
+/* Login CSS */
+#auth-overlay {
+    display: block;
+    position: fixed;
+    z-index: 9999999;
+    background: var(--background-color);
+    width: 100%;
+    height: 100%;
+}
+
+#auth-content {
+    margin: 0;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    -ms-transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
+}
+
+#name-input {
+    margin-bottom: 15px;
 }
 
 /* Footer */
@@ -126,4 +164,19 @@ footer .additional {
         transition: .2s;
         transform: scale(1.1);
     }
+}
+
+/* Utility CSS Classes */
+.white-filter {
+    filter: invert(100%) sepia(89%) saturate(0%) hue-rotate(355deg) brightness(106%) contrast(101%);
+}
+
+.minimal-input {
+    width: 100%;
+    line-height: 3;
+    background-color: var(--secondary-color);
+    border: none;
+    color: #fff;
+    padding-left: 10px;
+    padding-right: 10px;
 }
