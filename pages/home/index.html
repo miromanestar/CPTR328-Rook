@@ -22,7 +22,7 @@ firebase.database().ref('/rooms/').once('value').then( (data) => {
                     ` : '<span>Full</span>' }
                 </li>
                 ${ data.val().full === false ? `
-                <button class="btn btn-primary list-btn" onclick="join('${ data.key }');">Join</button>
+                <button class="btn btn-primary list-btn" onclick="enterName('${ data.key }');">Join</button>
                 ` : '<button class="btn btn-primary list-btn disabled">Join</button>' }
             </div>
         `);
@@ -40,6 +40,27 @@ function noRooms() {
         $('#room_list').after(`<div id="no_room_error" class="text-center alert alert-danger">No rooms were found.</div>`);
     else
         $('#no_room_error').remove();
+}
+function enterName(room_name) {
+    $('#auth-content').html(`
+                <div id="auth-content">
+                    <form id="login-form" class="login" onsubmit="return false;">
+                        <input id="name-input" class="minimal-input" type="text" name="login-name" placeholder="Display Name">
+                        <button id="login-btn" type="submit" class="btn btn-primary w-100" onclick="join('${ room_name }')">Enter</button>
+                    </form>
+                </div>
+                `);
+    $('#auth-overlay').fadeIn('fast');
+
+}
+function join(room_name) {
+   let name = $('#name-input').val();
+   if (name)
+    firebase.database().ref('/rooms/' + room_name + '/players/' + name).set({
+        "joined": Date.now(),
+        "lastUpdate": Date.now()
+    });
+    loadContent('room');
 }
 </script>
 
