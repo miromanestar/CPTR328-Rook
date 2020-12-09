@@ -27,7 +27,7 @@
     <link rel="stylesheet" href="assets/css/chat.css">
 </head>
 
-<body>
+<body onload="onFirstLoad();">
     <div id="ie-block">
         <div class="ie-block-content text-center">
             <h5 class=" display-4 text-center mt-5 mb-5">This site is not compatible with Internet Explorer. Please try any of the browsers below:</h5>
@@ -39,7 +39,7 @@
     </div>
 
     <!-- Login UI -->
-    <div id="auth-overlay">
+    <div id="auth-overlay" style="display: none;">
         <div id="auth-content">
             <div class="alert alert-primary" role="alert">
                 <p>
@@ -55,7 +55,7 @@
     <div id="wrapper">
         <header class="navigation sticky-top">
             <nav class="navbar navbar-dark navbar-expand-lg">
-                <a class="logo navbar-brand display-1" role="button" href="/">
+                <a class="logo navbar-brand display-1" role="button" onclick="loadContent('home')">
                     <img src="assets/icons/favicon.png" class="d-inline-block align-top white-filter logo-image" width="32" height="32" alt="">
                     Multiplayer Rook
                 </a>
@@ -64,13 +64,15 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
                     <div class="navbar-nav ml-auto">
+                        <li class="nav-item"><a class="nav-link" role="button" onclick="loadContent('home')">Home</a></li>
+                        <li class="nav-item"><a class="nav-link" role="button" onclick="loadContent('rules')">Rules</a></li>
                         <li class="nav-item"><a class="nav-link" id="logout-btn" role="button" onclick="logout()">Sign Out</a></li>
                     </div>
                 </div>
             </nav>
         </header>
 
-        <main role="main" class="container" id="#page-content"></main>
+        <main role="main" class="container" id="page-content"></main>
 
         <footer class="footer">
             <div class="d-flex container">
