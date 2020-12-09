@@ -14,8 +14,8 @@ firebase.database().ref('/rooms/').once('value').then( (data) => {
 
     room_list.on('child_added', (data) => {
         $('#room_list').append(`
-            <div id="room_${ data.key }" class="room-item d-flex">
-                <li class="list-group-item list-group-item-dark list-group-item-action d-flex justify-content-between align-items-center">
+            <div id="room_${ data.key }" class="room-item ${ data.val().full === false ? '' : 'disabled' } d-flex">
+                <li class="list-group-item list-group-item-dark w-100 d-flex justify-content-between align-items-center">
                     ${ data.key }
                     ${ data.val().full === false ? `
                         <span>${ data.val().players }/${ data.val().max }</span>
@@ -44,5 +44,13 @@ function noRooms() {
 </script>
 
 <style>
+.room-item:not(.disabled) {
+    transition: .2s;
+}
 
+.room-item:not(.disabled):hover {
+    transform: scale(1.02);
+    cursor: pointer;
+    background-color: var(--tertiary-color) !important;
+}
 </style>
