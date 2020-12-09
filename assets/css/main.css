@@ -244,6 +244,17 @@ footer .additional {
     color: #fff;
     padding-left: 10px;
     padding-right: 10px;
+    border-radius: 0;
+}
+
+.minimal-input:focus {
+    background-color: var(--secondary-color);
+    color: #fff;
+    border: none;
+}
+
+.minimal-input.form-control {
+    height: 3.1rem;
 }
 
 .btn {
