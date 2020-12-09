@@ -3,9 +3,9 @@
 <form class="form" id="create-room-form" onsubmit="return false;" method="GET">
     <div class="db-search-section">
         <label>Room Name</label>
-        <input id="name-input" class="minimal-input" autocomplete="on" type="text" name="name-input" placeholder="Enter Room Name">
+        <input id="room-name-input" class="minimal-input" autocomplete="on" type="text" name="name-input" placeholder="Enter Room Name">
     </div>
-    <div class="row">
+    <div class="row mt-2">
         <div class="col form-group">
             <label>Max Players</label>
             <select class="form-control minimal-input" id="max-players-select">
@@ -20,29 +20,68 @@
             <input id="password-input" class="minimal-input" type="password" autocomplete="new-password" name="password-input" placeholder="Optional">
         </div>
     </div>
-    <button id="search-btn" type="submit" class="btn btn-primary d-block text-center mx-auto mt-4" onclick="createRoom();">Create</button>
+    <button id="search-btn" type="submit" class="btn btn-primary d-block text-center mx-auto mt-4" onclick="authRoom();">Create</button>
 </form>
 
 <script>
-function createRoom() {
-    let room_name = $('#name-input').val();
-    let max_players = $('#max-players-select').val();
-    let room_password = $('#password-input').val();
+function authRoom() {
+    var room_name = $('#room-name-input').val();
 
     //Check if room already exists
     firebase.database().ref(`/rooms/${ room_name }/`).once('value').then( (data) => {
         if (data.exists()) {
             alert('Room already exists or no room name entered.');
         } else {
-            //Create room
-            firebase.database().ref(`/rooms/${ room_name }/`).set({
+            $('#auth-overlay').fadeIn('fast', function() {
+                $(this).html(`
+                <div id="auth-content">
+                    <form id="login-form" class="login" onsubmit="return false;">
+                        <input id="name-input" class="minimal-input" type="text" name="login-name" placeholder="Display Name">
+                        <button id="login-btn" type="submit" class="btn btn-primary w-100" onclick="createRoom()">Enter</button>
+                    </form>
+                </div>
+                `);
+            });
+        }
+    });
+}
+
+function createRoom(room_name) {
+    var room_name = $('#room-name-input').val();
+    let username = $('#name-input').val();
+    let max_players = $('#max-players-select').val();
+    let room_password = $('#password-input').val();
+
+
+    firebase.database().ref(`/rooms/${ room_name }/`).set({
                 'room_name': room_name,
                 'max_players': max_players,
                 'password': room_password,
                 'player_count': 1,
-                'players': []
+                'host': username,
+                'full': false,
+                'players': {
+                    [username]: {
+                        'joined': Date.now(),
+                        'lastUpdate': Date.now()
+                    }
+                },
+                'created': Date.now(),
+    }).then( (data) => {
+        $('#auth-content').delay(500).fadeOut('fast', function() {
+            $(this).html(`
+            <div class="alert alert-success" role="alert">
+                <p>
+                    Success! Creating room "${ room_name }".
+                </p>
+                <div class="spinner-border text-primary d-block mx-auto" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+            `).fadeIn('fast', function() {
+                $('#auth-overlay').delay(300).fadeOut('fast', loadContent('room', { room: room_name }));
             });
-        }
+        });
     });
 }
 </script>
