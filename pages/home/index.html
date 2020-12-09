@@ -18,7 +18,7 @@ firebase.database().ref('/rooms/').once('value').then( (data) => {
                 <li class="list-group-item list-group-item-dark w-100 d-flex justify-content-between align-items-center">
                     ${ data.key }
                     ${ data.val().full === false ? `
-                        <span>${ data.val().players }/${ data.val().max }</span>
+                        <span>${ data.val().players }/${ data.val().max_players }</span>
                     ` : '<span>Full</span>' }
                 </li>
                 ${ data.val().full === false ? `

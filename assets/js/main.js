@@ -108,6 +108,7 @@ function setUserInfo(username) {
 */
 
 // -------------- PAGE LOADING FUNCTIONS --------------
+
 window.addEventListener('popstate', function (e) {
     if (window.location.pathname === '/') {
         loadContent(`home`, '', false);
