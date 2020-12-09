@@ -14,15 +14,15 @@ firebase.database().ref('/rooms/').once('value').then( (data) => {
 
     room_list.on('child_added', (data) => {
         $('#room_list').append(`
-            <div id="room_${ data.key }" class="room-item ${ data.val().full === false ? '' : 'disabled' } d-flex">
+            <div id="room_${ data.key }" class="room-item d-flex" ${ data.val().full === false ? `onclick="enterName('${ data.key }')"` : 'class="room-item disabled d-flex"' }>
                 <li class="list-group-item list-group-item-dark w-100 d-flex justify-content-between align-items-center">
                     ${ data.key }
                     ${ data.val().full === false ? `
-                        <span>${ data.val().players }/${ data.val().max_players }</span>
+                        <span>${ data.val().player_count }/${ data.val().max_players }</span>
                     ` : '<span>Full</span>' }
                 </li>
                 ${ data.val().full === false ? `
-                <button class="btn btn-primary list-btn" onclick="enterName('${ data.key }');">Join</button>
+                <button class="btn btn-primary list-btn">Join</button>
                 ` : '<button class="btn btn-primary list-btn disabled">Join</button>' }
             </div>
         `);
@@ -43,12 +43,11 @@ function noRooms() {
 }
 function enterName(room_name) {
     $('#auth-content').html(`
-                <div id="auth-content">
-                    <form id="login-form" class="login" onsubmit="return false;">
-                        <input id="name-input" class="minimal-input" type="text" name="login-name" placeholder="Display Name">
-                        <button id="login-btn" type="submit" class="btn btn-primary w-100" onclick="join('${ room_name }')">Enter</button>
-                    </form>
-                </div>
+        <form id="login-form" class="login" onsubmit="return false;">
+            <input id="name-input" class="minimal-input" type="text" name="login-name" placeholder="Display Name">
+            <button id="login-btn" type="submit" class="btn btn-primary w-100" onclick="join('${ room_name }')">Enter</button>
+            <button id="login-btn" type="submit" class="btn btn-danger w-100 mt-3" onclick="$('#auth-overlay').fadeOut('fast');">Close</button>
+        </form>
                 `);
     $('#auth-overlay').fadeIn('fast');
 
@@ -59,8 +58,10 @@ function join(room_name) {
     firebase.database().ref('/rooms/' + room_name + '/players/' + name).set({
         "joined": Date.now(),
         "lastUpdate": Date.now()
+    }).then( (data) => {
+        console.log("WORK")
+        $('#auth-overlay').fadeOut('fast', loadContent('room'));
     });
-    loadContent('room');
 }
 </script>
 
