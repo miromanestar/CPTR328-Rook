@@ -59,8 +59,7 @@ function join(room_name) {
         "joined": Date.now(),
         "lastUpdate": Date.now()
     }).then( (data) => {
-        console.log("WORK")
-        $('#auth-overlay').fadeOut('fast', loadContent('room'));
+        $('#auth-overlay').fadeOut('fast', loadContent('room', { username: name, room: room_name}));
     });
 }
 </script>
