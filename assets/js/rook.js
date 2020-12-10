@@ -27,9 +27,39 @@ function playerListUpdate() {
     let playerData = firebase.database().ref(`/rooms/${ room }/players`);
     playerData.on('value', (data) => {
         playerList = data.val();
+
+        let numOfPlayers = 0;
+        for (let player in playerList)
+            numOfPlayers++;
+    
+        full = false;
+        firebase.database().ref(`/rooms/${ room }`).once('value').then( (data) => {
+            if (numOfPlayers >= data.val().max_players)
+                full = true;
+            else
+                full = false;
+        });
+    
+        //Update playerlist related data
+        firebase.database().ref(`/rooms/${ room }`).update({player_count: numOfPlayers, full: full})
     });
 }
 
 function hostStuff() {
+    //Periodically delete players
+    //setInterval(function() { deletePlayers(); console.log('Purging players'); }, 60000);
+
     let roomDB = firebase.database().ref(`/rooms/${ room }`);
 }
+
+// ---- HOST FUNCTIONS FOR DELETING DISCONNECTED PLAYERS
+
+function deletePlayers() {
+    for (let player in playerList) {
+        if (Date.now() - playerList[player].lastUpdate > 60000) {
+            firebase.database().ref(`/rooms/${ room }/players/${ player }`).remove();
+        }
+    }
+}
+
+fun
