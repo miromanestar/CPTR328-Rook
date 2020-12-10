@@ -1,1 +1,13 @@
 /* CSS rules for the actual rook part of the game */
+#player-area {
+    color: white;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.card {
+    background-color: var(--secondary-color);
+    margin: 5px 5px;
+    width: 150px;
+    padding: 5px;
+}

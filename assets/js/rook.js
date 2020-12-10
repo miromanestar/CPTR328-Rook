@@ -52,7 +52,7 @@ function displayPlayers() {
     for (let player in playerList) {
         let p = playerList[player];
         $('#player-area').append(`
-        <div>${ player }</div>
+        <div class="card">${ player }</div>
         `);
     }
 }
