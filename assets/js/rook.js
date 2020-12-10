@@ -27,21 +27,21 @@ function playerListUpdate() {
     let playerData = firebase.database().ref(`/rooms/${ room }/players`);
     playerData.on('value', (data) => {
         playerList = data.val();
-
         let numOfPlayers = 0;
         for (let player in playerList)
             numOfPlayers++;
-    
+
         full = false;
         firebase.database().ref(`/rooms/${ room }`).once('value').then( (data) => {
+            console.log(numOfPlayers - data.val().max_players)
             if (numOfPlayers >= data.val().max_players)
                 full = true;
             else
                 full = false;
+        }).then ( (data) => {
+            //Update playerlist related data
+            firebase.database().ref(`/rooms/${ room }`).update({player_count: numOfPlayers, full: full})
         });
-    
-        //Update playerlist related data
-        firebase.database().ref(`/rooms/${ room }`).update({player_count: numOfPlayers, full: full})
     });
 }
 
@@ -61,5 +61,3 @@ function deletePlayers() {
         }
     }
 }
-
-fun
