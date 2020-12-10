@@ -14,7 +14,7 @@ firebase.database().ref('/rooms/').once('value').then( (data) => {
 
     room_list.on('child_added', (data) => {
         $('#room_list').append(`
-            <div id="room_${ data.key }" class="room-item d-flex" ${ data.val().full === false ? `onclick="enterName('${ data.key }')"` : 'class="room-item disabled d-flex"' }>
+            <div id="room_${ data.key }" class="room-item d-flex" ${ data.val().full === false || data.val().started === false ? `onclick="enterName('${ data.key }')"` : 'class="room-item disabled d-flex"' }>
                 <li class="list-group-item list-group-item-dark w-100 d-flex justify-content-between align-items-center">
                     ${ data.key }
                     ${ data.val().full === false ? `
@@ -32,7 +32,7 @@ firebase.database().ref('/rooms/').once('value').then( (data) => {
     noRooms();
 
 }).catch( (error) => {
-
+    alert(error);
 });
 
 function noRooms() {
@@ -53,13 +53,24 @@ function enterName(room_name) {
 
 }
 function join(room_name) {
-   let name = $('#name-input').val();
-   if (name)
-    firebase.database().ref('/rooms/' + room_name + '/players/' + name).set({
-        "joined": Date.now(),
-        "lastUpdate": Date.now()
-    }).then( (data) => {
-        $('#auth-overlay').fadeOut('fast', loadContent('room', { username: name, room: room_name}));
+    let name = $('#name-input').val();
+    firebase.database().ref(`/rooms/${ room_name }`).once('value').then( (data) => {
+        let roomData = data.val();
+        if (roomData.full === true) {
+            alert('Game is full');
+        } else if (roomData.started === true) {
+            alert('Game has already started');
+        } else if (roomData.players[name]) {
+            alert('Player with your name already exists');
+        } else {
+            if (name)
+                firebase.database().ref('/rooms/' + room_name + '/players/' + name).set({
+                    "joined": Date.now(),
+                    "lastUpdate": Date.now()
+                }).then( (data) => {
+                    $('#auth-overlay').fadeOut('fast', loadContent('room', { username: name, room: room_name, isHost: false }));
+                });
+        }
     });
 }
 </script>

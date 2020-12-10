@@ -53,7 +53,6 @@ function createRoom(room_name) {
     let max_players = $('#max-players-select').val();
     let room_password = $('#password-input').val();
 
-
     firebase.database().ref(`/rooms/${ room_name }/`).set({
                 'room_name': room_name,
                 'max_players': max_players,
@@ -68,6 +67,7 @@ function createRoom(room_name) {
                     }
                 },
                 'created': Date.now(),
+                'started': false
     }).then( (data) => {
         $('#auth-content').delay(500).fadeOut('fast', function() {
             $(this).html(`
@@ -80,7 +80,7 @@ function createRoom(room_name) {
                 </div>
             </div>
             `).fadeIn('fast', function() {
-                $('#auth-overlay').delay(300).fadeOut('fast', loadContent('room', { room: room_name }));
+                $('#auth-overlay').delay(300).fadeOut('fast', loadContent('room', { username: username, room: room_name, isHost: true }));
             });
         });
     });
