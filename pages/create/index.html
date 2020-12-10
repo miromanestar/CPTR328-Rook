@@ -67,7 +67,8 @@ function createRoom(room_name) {
                     }
                 },
                 'created': Date.now(),
-                'started': false
+                'started': false,
+                'lastUpdate': Date.now()
     }).then( (data) => {
         $('#auth-content').delay(500).fadeOut('fast', function() {
             $(this).html(`

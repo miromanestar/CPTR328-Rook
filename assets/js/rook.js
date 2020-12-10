@@ -40,9 +40,21 @@ function playerListUpdate() {
                 full = false;
         }).then ( (data) => {
             //Update playerlist related data
-            firebase.database().ref(`/rooms/${ room }`).update({player_count: numOfPlayers, full: full})
+            firebase.database().ref(`/rooms/${ room }`).update({player_count: numOfPlayers, full: full});
+            displayPlayers();
         });
     });
+}
+
+function displayPlayers() {
+    $('#player-area').empty();
+
+    for (let player in playerList) {
+        let p = playerList[player];
+        $('#player-area').append(`
+        <div>${ player }</div>
+        `);
+    }
 }
 
 function hostStuff() {
