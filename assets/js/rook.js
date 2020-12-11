@@ -46,6 +46,8 @@ $(document).ready( function() {
             else
                 isHost = false;
         }
+
+        hostStuff();
     });
 
     if (room && username) {
@@ -53,9 +55,8 @@ $(document).ready( function() {
         playerListUpdate();
     }
 
-    hostStuff();
-
-    connectionInterval = setInterval(function() { connectionChecks() }, 20000);
+    if (!connectionInterval)
+        connectionInterval = setInterval(function() { connectionChecks() }, 20000);
 
     if (!room && !username)
         clearInterval(connectionInterval);
@@ -168,7 +169,7 @@ function maintainHost() {
 function hostStuff() {
     let interval = null;
     if (isHost)
-        interval = setInterval(function() { deletePlayers(); }, 60000);
+        interval = setInterval(function() { deletePlayers(); }, 30000);
     else
         clearInterval(interval);
 }
@@ -191,7 +192,7 @@ function deletePlayers() {
 
 var isStarted = false;
 $(document).ready(function() {
-    $('#game-area').append(`
+    $('#card-stack').html(`
         <div id="game-launcher" class="card mx-auto w-50 mt-5 p-3">
             <p class="text-center">
                 Waiting for players...
@@ -211,11 +212,11 @@ function initializeGame() {
     firebase.database().ref(`/rooms/${ room }`).on('value', (data) => {
         if (Object.keys(playerList).length >= 3 & isStarted === false) {
             if (isHost) {
-                $('#game-launcher').html(`
+                $('#card-stack').html(`
                     <button id="login-btn" type="submit" class="btn btn-primary" onclick="startGame();">Start</button>
                 `);
             } else {
-                $('#game-launcher').html(`
+                $('#card-stack').html(`
                     <p class="text-center">
                         Waiting on the host to begin the game...
                     </p>
@@ -224,15 +225,17 @@ function initializeGame() {
                     </div>
                 `);  
             }
+            //Tells all connected clients to run whatever command is specified
+            firebase.database().ref(`/rooms/${ room }/cmd`).on('value', (data) => {
+                window[data.val()]();
+            });
         } else {
-            $('#game-launcher').html(`
-                <div id="game-launcher" class="card mx-auto w-50 mt-5 p-3">
-                    <p class="text-center">
-                        Waiting for players...
-                    </p>
-                    <div class="spinner-border text-primary d-block mx-auto" role="status">
-                        <span class="sr-only">Loading...</span>
-                    </div>
+            $('#card-stack').html(`
+                <p class="text-center">
+                    Waiting for players...
+                </p>
+                <div class="spinner-border text-primary d-block mx-auto" role="status">
+                    <span class="sr-only">Loading...</span>
                 </div>
             `);
         }
@@ -246,6 +249,7 @@ function startGame() {
     game.update({ started: true });
 
     dealCards();
+    beginGame();
 }
 
 function dealCards() {
@@ -272,6 +276,7 @@ function dealCards() {
     let cardRef = firebase.database().ref(`/rooms/${ room }/cards`);
     let kittyRef = firebase.database().ref(`/rooms/${ room }/kitty`);
 
+    kittyRef.remove();
     if (Object.keys(playerList).length === 3) {
         for (let i = 0; i < 6; i++) {
             cards = getKittyCard(cards);
@@ -317,4 +322,27 @@ function getKittyCard(cards) {
     delete cards[cardKey];
 
     return cards;
-}   
+}
+
+//Will dynamically update the card display for the user as they make changes
+function displayPlayerCards() {
+    firebase.database().ref(`/rooms/${ room }/players/${ username }/cards/`).on('value', (data) => {
+        $('#player-cards').empty();
+
+        let cards = data.val();
+        for (let card in cards) {
+            $('#player-cards').append(`
+                <div class="card player-card" onclick="alert('Idk')" style="background: url('${ cards[card].path }'); background-size: 100% 100%;">
+                </div>
+            `);
+        }
+    });
+}
+
+function beginGame() {
+    let cmdRef = firebase.database().ref(`/rooms/${ room }/cmd`);
+    cmdRef.set('displayPlayerCards');
+    $('#card-stack').html(`
+        <p>Game has begun... I guess... Now what?
+    `)
+}

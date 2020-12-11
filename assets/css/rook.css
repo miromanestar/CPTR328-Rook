@@ -2,12 +2,54 @@
 #player-area {
     color: white;
     display: flex;
-    flex-wrap: wrap;
     justify-content: center;
 }
+
 .card {
     background-color: var(--secondary-color);
     margin: 5px 5px;
-    width: 150px;
+}
+
+#card-stack {
+
+}
+
+#player-cards {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    cursor: grab;
+    margin-top: 28%;
+}
+
+#player-cards::-webkit-scrollbar {
+    width: 6px;
+  }
+
+#player-cards::-webkit-scrollbar-track {
+    background: var(--background-color);
+    border: var(--secondary-color) 5px;
+}
+
+#player-cards::-webkit-scrollbar-thumb {
+    background: var(--secondary-color);
+}
+
+#player-cards:focus {
+    cursor: grabbing;
+}
+
+.card.player-card {
     padding: 5px;
+    width: 130px;
+    height: 200px;
+    flex: 0 0 auto;
+    transition: .2s;
+}
+
+.card.player-card:hover {
+    transform: scale(1.05);
+    cursor: pointer;
 }
