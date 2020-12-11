@@ -2,8 +2,12 @@
 var username = null;
 var room = null;
 var isHost = false;
+var host = null;
 
 var playerList = null;
+var isLeaving = false;
+
+var connectionInterval = null;
 
 $(document).ready( function() {
     username = window.history.state.username;
@@ -13,32 +17,8 @@ $(document).ready( function() {
 
     //Figure out if host
     firebase.database().ref(`/rooms/${ room }`).on('value', (data) => {
-        if (data.val().host === username)
-            isHost = true;
-        else
-            isHost = false;
-    });
-
-    $('#logout-btn').show();
-    playerListUpdate();
-
-    if (isHost)
-        hostStuff();
-
-    setInterval(function() { connectionChecks() }, 20000);
-});
-
-
-// ---- GENERAL UPDATE STUFF FOR ALL CLIENTS
-
-function connectionChecks() {
-    firebase.database().ref(`/rooms/${ room }`).once('value').then( (data) => {
-        if (data.exists()) {
-            firebase.database().ref(`/rooms/${ room }`).update({ lastUpdate: Date.now() });
-            firebase.database().ref(`/rooms/${ room }/players/${ username }`).update({ lastUpdate: Date.now() });
-            console.log('User connection verified.');
-        } else {
-            alert(`The room ${ room } was forcibly closed.`);
+        if (!data.exists() && !isLeaving) {
+            alert(`Connection to game ${ room } was lost.`);
             $('#auth-content').html(`
                 <div class="alert alert-info" role="alert">
                         <p>
@@ -53,6 +33,40 @@ function connectionChecks() {
                 $('#auth-overlay').fadeIn('fast', function() {
                     $('#auth-overlay').delay(500).fadeOut('fast', loadContent('home'));
                 });
+
+            return;
+        }
+
+        if (!isLeaving) {
+            host = data.val().host;
+            if (host === username)
+                isHost = true;
+            else
+                isHost = false;
+        }
+    });
+
+    $('#logout-btn').show();
+    playerListUpdate();
+
+    hostStuff();
+
+    connectionInterval = setInterval(function() { connectionChecks() }, 20000);
+});
+
+
+// ---- GENERAL UPDATE STUFF FOR ALL CLIENTS
+
+//When called, lets the server know a player is still connected
+function connectionChecks() {
+    firebase.database().ref(`/rooms/${ room }`).once('value').then( (data) => {
+        if (data.exists()) {
+            firebase.database().ref(`/rooms/${ room }`).update({ lastUpdate: Date.now() });
+            firebase.database().ref(`/rooms/${ room }/players/${ username }`).update({ lastUpdate: Date.now() });
+            maintainHost();
+            console.log('User connection verified.');
+        } else {
+            clearInterval(connectionInterval);
         }
     });
 }
@@ -81,7 +95,7 @@ function playerListUpdate() {
             }
         });
 
-        if (!playerList[username]) {
+        if (!playerList || !playerList[username]) {
             $('#auth-content').html(`
                 <div class="alert alert-info" role="alert">
                         <p>
@@ -116,6 +130,7 @@ function displayPlayers() {
 
 function leaveRoom() {
     let shouldLeave = confirm('Are you sure you want to leave the game?');
+    isLeaving = true;
     if (shouldLeave) {
         firebase.database().ref(`/rooms/${ room }/players/${ username }`).remove();
 
@@ -125,19 +140,22 @@ function leaveRoom() {
 }
 
 
-// ---- FUNCTION FOR THe HOST ----
+// ---- FUNCTIONS FOR THe HOST ----
 
+//If the host hasn't been pinging the server, set a new host
 function maintainHost() {
-
+    firebase.database().ref(`/rooms/${ room }/players/${ host }`).once('value').then( (data) => {
+        if (Date.now() - data.val().lastUpdate > 40000)
+            firebase.database().ref(`/rooms/${ room }`).update({ host: Object.keys(playerList)[0] })
+    });
 }
 
 function hostStuff() {
-    //Periodically delete players
-    setInterval(function() { deletePlayers(); }, 60000);
-
-    let roomDB = firebase.database().ref(`/rooms/${ room }`);
-
-
+    let interval = null;
+    if (isHost)
+        interval = setInterval(function() { deletePlayers(); }, 60000);
+    else
+        clearInterval(interval);
 }
 
 function deletePlayers() {
