@@ -101,7 +101,7 @@ function leaveRoom() {
     if (shouldLeave) {
         firebase.database().ref(`/rooms/${ room }/players/${ username }`).remove();
 
-        if (isHost)
+        if (isHost && playerList)
             firebase.database().ref(`/rooms/${ room }`).update({ host: Object.keys(playerList)[0] })
 
         $('#auth-content').html(`
