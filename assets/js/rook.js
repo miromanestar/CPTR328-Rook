@@ -146,7 +146,7 @@ function leaveRoom() {
 function maintainHost() {
     firebase.database().ref(`/rooms/${ room }/players/${ host }`).once('value').then( (data) => {
         if (Date.now() - data.val().lastUpdate > 40000)
-            firebase.database().ref(`/rooms/${ room }`).update({ host: Object.keys(playerList)[0] })
+            firebase.database().ref(`/rooms/${ room }`).update({ host: username })
     });
 }
 
