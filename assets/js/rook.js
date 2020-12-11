@@ -64,7 +64,7 @@ $(document).ready( function() {
 //When called, lets the server know a player is still connected
 function connectionChecks() {
     firebase.database().ref(`/rooms/${ room }`).once('value').then( (data) => {
-        if (data.exists()) {
+        if (data.exists() && playerList && playerList[username]) {
             firebase.database().ref(`/rooms/${ room }`).update({ lastUpdate: Date.now() });
             firebase.database().ref(`/rooms/${ room }/players/${ username }`).update({ lastUpdate: Date.now() });
             maintainHost();
