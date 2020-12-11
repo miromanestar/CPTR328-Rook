@@ -178,16 +178,17 @@ function deletePlayers() {
 */
 
 var isStarted = false;
-
-$(document).ready(function() {
-    $('#game-area').append(`
-        <div class="card mx-auto w-50 mt-5 p-3">
-            <p class="text-center">
-                Waiting for players...
-            </p>
-            <div class="spinner-border text-primary d-block mx-auto" role="status">
-                <span class="sr-only">Loading...</span>
+while (Object.keys(playerList).length < 3) {
+    $(document).ready(function() {
+        $('#game-area').append(`
+            <div class="card mx-auto w-50 mt-5 p-3">
+                <p class="text-center">
+                    Waiting for players...
+                </p>
+                <div class="spinner-border text-primary d-block mx-auto" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
             </div>
-        </div>
-    `);
-});
+        `);
+    });
+};
