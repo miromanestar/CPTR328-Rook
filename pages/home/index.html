@@ -7,36 +7,45 @@
 </div>
 
 <script>
-//Get list of open rooms
-firebase.database().ref('/rooms/').once('value').then( (data) => {
-    var room_list = firebase.database().ref('/rooms/');
-    $('#room-loader').hide();
+var stopDoubleRuns = 0; //This is just stupid
 
-    room_list.on('child_added', (data) => {
-        $('#room_list').append(makeRoom(data));
-        deleteRoom(data);
-        noRooms();
+$(document).ready(function() {
+    if (stopDoubleRuns === 0)
+        updateRooms();
+    stopDoubleRuns++;
+})
 
+function updateRooms() {
+    firebase.database().ref('/rooms/').once('value').then( (data) => {
+        var room_list = firebase.database().ref('/rooms/');
+        $('#room-loader').hide();
+
+        room_list.on('child_added', (data) => {
+            $('#room_list').append(makeRoom(data));
+            deleteRoom(data);
+            noRooms();
+
+        });
+
+        room_list.on('child_removed', (data) => {
+            let roomNum = data.key.split(' ').join('_');
+            $(`#room_${ roomNum }`).remove();
+            noRooms();
+        });
+
+        room_list.on('child_changed', (data) => {
+            let roomNum = data.key.split(' ').join('_');
+            $(`#room_${ roomNum }`).replaceWith(makeRoom(data));
+            deleteRoom(data);
+            noRooms();
+        });
+
+        noRooms(); //In case there are no rooms from the beginning.
+
+    }).catch( (error) => {
+        alert(error);
     });
-
-    room_list.on('child_removed', (data) => {
-        let roomNum = data.key.split(' ').join('_');
-        $(`#room_${ roomNum }`).remove();
-        noRooms();
-    });
-
-    room_list.on('child_changed', (data) => {
-        let roomNum = data.key.split(' ').join('_');
-        $(`#room_${ roomNum }`).replaceWith(makeRoom(data));
-        deleteRoom(data);
-        noRooms();
-    });
-
-    noRooms(); //In case there are no rooms from the beginning.
-
-}).catch( (error) => {
-    alert(error);
-});
+}
 
 function makeRoom(data) {
     let roomNum = data.key.split(' ').join('_');
@@ -56,13 +65,17 @@ function makeRoom(data) {
     else
         lastUpdated = Math.round(lastUpdated/60000) + ' minutes ago';
 
+    let elemAttr = `class="room-item d-flex" onclick="enterName('${ data.key }')"`;
+    if (data.val().full === true || data.val().started === true)
+        elemClasses = elemAttr = `class="room-item d-flex disabled"`;
+
     const room = `
-        <div id="room_${ roomNum }" class="room-item d-flex" ${ data.val().full === false || data.val().started === false ? `onclick="enterName('${ data.key }')"` : 'class="room-item disabled d-flex"' }>
+        <div id="room_${ roomNum }" ${ elemAttr }>
             <li class="list-group-item list-group-item-dark w-100 d-flex justify-content-between align-items-center">
                 ${ data.key }
                 <span><div class="d-block text-right">${ game_status }</div><div class="d-block text-muted">${ lastUpdated }</div></span>
             </li>
-            ${ data.val().full === false ? `
+            ${ data.val().full === false && data.val().started === false ? `
             <button class="btn btn-primary list-btn">Join</button>
             ` : '<button class="btn btn-primary list-btn disabled">Join</button>' }
         </div>
