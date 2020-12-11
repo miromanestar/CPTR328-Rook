@@ -102,7 +102,7 @@ function join(room_name) {
             alert('Game is full');
         } else if (roomData.started === true) {
             alert('Game has already started');
-        } else if (roomData.players[name]) {
+        } else if (roomData.players && roomData.players[name]) {
             alert('Player with your name already exists');
         } else {
             if (name)

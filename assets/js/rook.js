@@ -34,7 +34,7 @@ $(document).ready( function() {
 function connectionChecks() {
     firebase.database().ref(`/rooms/${ room }`).once('value').then( (data) => {
         if (data.exists()) {
-            firebase.database().ref(`/rooms/${ room }`).update({ lastUpdate: Date.now(), players: { [username]: Date.now() } });
+            //firebase.database().ref(`/rooms/${ room }`).update({ lastUpdate: Date.now(), players: { [username]: { lastUpdate: Date.now() } } });
             console.log('User connection verified.');
         } else {
             alert(`The room ${ room } was forcibly closed.`);
