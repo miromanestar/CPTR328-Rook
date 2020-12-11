@@ -14,8 +14,9 @@ firebase.database().ref('/rooms/').once('value').then( (data) => {
 
     room_list.on('child_added', (data) => {
         $('#room_list').append(makeRoom(data));
-        noRooms();
         deleteRoom(data);
+        noRooms();
+
     });
 
     room_list.on('child_removed', (data) => {
@@ -27,8 +28,8 @@ firebase.database().ref('/rooms/').once('value').then( (data) => {
     room_list.on('child_changed', (data) => {
         let roomNum = data.key.split(' ').join('_');
         $(`#room_${ roomNum }`).replaceWith(makeRoom(data));
-        noRooms();
         deleteRoom(data);
+        noRooms();
     });
 
     noRooms(); //In case there are no rooms from the beginning.
@@ -79,7 +80,7 @@ function deleteRoom(data) {
 
 function noRooms() {
     if ($('#room_list').children().length === 0)
-        $('#room_list').after(`<div id="no_room_error" class="text-center alert alert-danger">No rooms were found.</div>`);
+        $('#room_list').before(`<div id="no_room_error" class="text-center alert alert-danger">No rooms were found.</div>`);
     else
         $('#no_room_error').remove();
 }
