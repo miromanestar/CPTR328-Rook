@@ -138,6 +138,9 @@ function leaveRoom() {
     if (shouldLeave) {
         firebase.database().ref(`/rooms/${ room }/players/${ username }`).remove();
 
+        if (!playerList)
+            firebase.database().ref(`/rooms/${ room }`).remove();
+
         if (isHost && playerList)
             firebase.database().ref(`/rooms/${ room }`).update({ host: Object.keys(playerList)[0] })
     }
@@ -181,7 +184,7 @@ function deletePlayers() {
 var isStarted = false;
 $(document).ready(function() {
     $('#game-area').append(`
-        <div class="card mx-auto w-50 mt-5 p-3">
+        <div id="game-launcher" class="card mx-auto w-50 mt-5 p-3">
             <p class="text-center">
                 Waiting for players...
             </p>
@@ -192,6 +195,130 @@ $(document).ready(function() {
     `);
 
     if (initializationFinished) {
-        //Do stuff
+        initializeGame();
     }
 });
+
+function initializeGame() {
+    firebase.database().ref(`/rooms/${ room }`).on('value', (data) => {
+        if (Object.keys(playerList).length >= 3 & isStarted === false) {
+            if (isHost) {
+                $('#game-launcher').html(`
+                    <button id="login-btn" type="submit" class="btn btn-primary" onclick="startGame();">Start</button>
+                `);
+            } else {
+                $('#game-launcher').html(`
+                    <p class="text-center">
+                        Waiting on the host to begin the game...
+                    </p>
+                    <div class="spinner-border text-primary d-block mx-auto" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                `);  
+            }
+        } else {
+            $('#game-launcher').html(`
+                <div id="game-launcher" class="card mx-auto w-50 mt-5 p-3">
+                    <p class="text-center">
+                        Waiting for players...
+                    </p>
+                    <div class="spinner-border text-primary d-block mx-auto" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            `);
+        }
+    });
+}
+
+function startGame() {
+    let game = firebase.database().ref(`/rooms/${ room }`);
+
+    isStarted = true;
+    game.update({ started: true });
+
+    dealCards();
+}
+
+function dealCards() {
+    let cards = {};
+    for (let color of ['Black', 'Green', 'Red', 'Yellow']) {
+        for (let i = 1; i <= 14; i++) {
+            if (i !== 2 && i !== 3 && i !== 4) {
+                cards[color + ' ' + i] = {
+                    value: i !== 1 ? i : 15,
+                    name: color + ' ' + (i < 10 ? '0' + i : i),
+                    path: '/assets/images/cards/' + color + ' ' + (i < 10 ? '0' + i : i) + '.svg'
+                };
+            }
+        }
+    }
+    cards['Rook'] = {
+        value: 20,
+        name: 'Rook',
+        path: '/assets/images/cards/Crow.svg'
+    };
+
+    firebase.database().ref(`/rooms/${ room }`).update({ cards: cards });
+
+    let kitty = {};
+
+    let cardRef = firebase.database().ref(`/rooms/${ room }/cards`);
+    let kittyRef = firebase.database().ref(`/rooms/${ room }/kitty`);
+
+    if (Object.keys(playerList).length === 3) {
+        for (let i = 0; i < 6; i++) {
+            getKittyCard();
+        }
+    } else if (Object.keys(playerList).length === 4) {
+        for (let i = 0; i < 5; i++) {
+            getKittyCard();        
+        }
+    } else if (Object.keys(playerList).length === 5) {
+        for (let i = 0; i < 4; i++) {
+            getKittyCard();
+        }
+    } else if (Object.keys(playerList).length === 6) {
+        for (let i = 0; i < 3; i++) {
+            getKittyCard();
+        }
+    }
+
+    kittyRef.off('value');
+
+    let numCards = 0;
+    cardRef.once('value').then( (data) => {
+        numCards = Object.keys(data.val()).length;
+        dealPlayerCards(numCards, cardRef);
+    });
+
+    cardRef.off('value');
+}
+
+function dealPlayerCards(numCards, cardRef) {
+    let maxAttempts = Math.floor(numCards/Object.keys(playerList).length);
+    for (let player in playerList) {
+        console.log(player)
+        for (let i = 0; i < maxAttempts; i++) {
+            cardRef.once('value').then( (data) => {
+                let keys = Object.keys(data.val());
+                let cardTemp = data.val();
+                let cardKey = keys[Math.floor(keys.length * Math.random())];
+                let card = cardTemp[cardKey];
+                firebase.database().ref(`/rooms/${ room }/players/${ player }/cards`).update({ [cardKey]: card });
+                firebase.database().ref(`/rooms/${ room }/cards/${ cardKey }`).remove();
+            });
+        }
+    }
+}
+
+function getKittyCard() {
+    firebase.database().ref(`/rooms/${ room }/cards`).once('value').then( (data) => {
+        let keys = Object.keys(data.val());
+        let cardTemp = data.val();
+        let cardKey = keys[Math.floor(keys.length * Math.random())];
+        let card = cardTemp[cardKey];
+        firebase.database().ref(`/rooms/${ room }/kitty`).update({ [cardKey]: card });
+        firebase.database().ref(`/rooms/${ room }/cards/${ cardKey }`).remove();
+    });
+}
