@@ -13,27 +13,69 @@ firebase.database().ref('/rooms/').once('value').then( (data) => {
     $('#room-loader').hide();
 
     room_list.on('child_added', (data) => {
-        $('#room_list').append(`
-            <div id="room_${ data.key }" class="room-item d-flex" ${ data.val().full === false || data.val().started === false ? `onclick="enterName('${ data.key }')"` : 'class="room-item disabled d-flex"' }>
-                <li class="list-group-item list-group-item-dark w-100 d-flex justify-content-between align-items-center">
-                    ${ data.key }
-                    ${ data.val().full === false ? `
-                        <span>${ data.val().player_count }/${ data.val().max_players }</span>
-                    ` : '<span>Full</span>' }
-                </li>
-                ${ data.val().full === false ? `
-                <button class="btn btn-primary list-btn">Join</button>
-                ` : '<button class="btn btn-primary list-btn disabled">Join</button>' }
-            </div>
-        `);
+        $('#room_list').append(makeRoom(data));
+        noRooms();
+        deleteRoom(data);
+    });
+
+    room_list.on('child_removed', (data) => {
+        let roomNum = data.key.split(' ').join('_');
+        $(`#room_${ roomNum }`).remove();
         noRooms();
     });
 
-    noRooms();
+    room_list.on('child_changed', (data) => {
+        let roomNum = data.key.split(' ').join('_');
+        $(`#room_${ roomNum }`).replaceWith(makeRoom(data));
+        noRooms();
+        deleteRoom(data);
+    });
+
+    noRooms(); //In case there are no rooms from the beginning.
 
 }).catch( (error) => {
     alert(error);
 });
+
+function makeRoom(data) {
+    let roomNum = data.key.split(' ').join('_');
+
+    let game_status = data.val().player_count + '/' + data.val().max_players;
+    if (data.val().started === true)
+        game_status = 'Started (' + game_status + ')';
+    else if (data.val().full === true)
+        game_status = 'Full (' + game_status + ')';
+
+    let lastUpdated = Date.now() - data.val().lastUpdate;
+    let updatedMessage = 'Error';
+    if (lastUpdated/60000 < 1)
+        lastUpdated = Math.round(lastUpdated/1000) + ' seconds ago';
+    else if (Math.round(lastUpdated/60000) === 1)
+        lastUpdated = Math.round(lastUpdated/60000) + ' minute ago';
+    else
+        lastUpdated = Math.round(lastUpdated/60000) + ' minutes ago';
+
+    const room = `
+        <div id="room_${ roomNum }" class="room-item d-flex" ${ data.val().full === false || data.val().started === false ? `onclick="enterName('${ data.key }')"` : 'class="room-item disabled d-flex"' }>
+            <li class="list-group-item list-group-item-dark w-100 d-flex justify-content-between align-items-center">
+                ${ data.key }
+                <span><div class="d-block text-right">${ game_status }</div><div class="d-block text-muted">${ lastUpdated }</div></span>
+            </li>
+            ${ data.val().full === false ? `
+            <button class="btn btn-primary list-btn">Join</button>
+            ` : '<button class="btn btn-primary list-btn disabled">Join</button>' }
+        </div>
+    `;
+
+    return room;
+}
+
+function deleteRoom(data) {
+    if (Date.now() - data.val().lastUpdate > 1000 * 60 * 10 || data.val().player_count <= 0) { //Remove room if it hasn't been updated in 10 minutes or it has 0 players
+        console.log(`Deleting room ${ data.key }`);
+        firebase.database().ref(`/rooms/${ data.key }`).remove();
+    }
+}
 
 function noRooms() {
     if ($('#room_list').children().length === 0)
