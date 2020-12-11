@@ -34,7 +34,8 @@ $(document).ready( function() {
 function connectionChecks() {
     firebase.database().ref(`/rooms/${ room }`).once('value').then( (data) => {
         if (data.exists()) {
-            //firebase.database().ref(`/rooms/${ room }`).update({ lastUpdate: Date.now(), players: { [username]: { lastUpdate: Date.now() } } });
+            firebase.database().ref(`/rooms/${ room }`).update({ lastUpdate: Date.now() });
+            firebase.database().ref(`/rooms/${ room }/players/${ username }`).update({ lastUpdate: Date.now() });
             console.log('User connection verified.');
         } else {
             alert(`The room ${ room } was forcibly closed.`);
@@ -115,6 +116,7 @@ function leaveRoom() {
         `);
 
         $('#auth-overlay').fadeIn('fast', function() {
+            $('#logout-btn').hide();
             $('#auth-overlay').delay(500).fadeOut('fast', loadContent('home'));
         });
     }
