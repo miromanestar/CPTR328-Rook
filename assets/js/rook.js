@@ -25,7 +25,7 @@ $(document).ready( function() {
     if (isHost)
         hostStuff();
 
-    setInterval(connectionChecks(), 20000);
+    setInterval(function() { connectionChecks() }, 20000);
 });
 
 
@@ -80,6 +80,24 @@ function playerListUpdate() {
                 firebase.database().ref(`/rooms/${ room }`).remove();
             }
         });
+
+        if (!playerList[username]) {
+            $('#auth-content').html(`
+                <div class="alert alert-info" role="alert">
+                        <p>
+                            Leaving room "${ room }".
+                        </p>
+                        <div class="spinner-border text-primary d-block mx-auto" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                </div>
+                `);
+
+                $('#auth-overlay').fadeIn('fast', function() {
+                    $('#logout-btn').hide();
+                    $('#auth-overlay').delay(500).fadeOut('fast', loadContent('home'));
+                });
+        }
     });
 }
 
@@ -103,22 +121,6 @@ function leaveRoom() {
 
         if (isHost && playerList)
             firebase.database().ref(`/rooms/${ room }`).update({ host: Object.keys(playerList)[0] })
-
-        $('#auth-content').html(`
-        <div class="alert alert-info" role="alert">
-                <p>
-                    Leaving room "${ room }".
-                </p>
-                <div class="spinner-border text-primary d-block mx-auto" role="status">
-                    <span class="sr-only">Loading...</span>
-                </div>
-        </div>
-        `);
-
-        $('#auth-overlay').fadeIn('fast', function() {
-            $('#logout-btn').hide();
-            $('#auth-overlay').delay(500).fadeOut('fast', loadContent('home'));
-        });
     }
 }
 
