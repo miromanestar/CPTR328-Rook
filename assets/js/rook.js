@@ -3,6 +3,7 @@ var username = null;
 var room = null;
 var isHost = false;
 var host = null;
+var initializationFinished = false;
 
 var playerList = null;
 var isLeaving = false;
@@ -78,23 +79,6 @@ function playerListUpdate() {
     let playerData = firebase.database().ref(`/rooms/${ room }/players`);
     playerData.on('value', (data) => {
         playerList = data.val();
-        let numOfPlayers = Object.keys(playerList).length;
-
-        full = false;
-        firebase.database().ref(`/rooms/${ room }`).once('value').then( (data) => {
-            if (numOfPlayers >= data.val().max_players)
-                full = true;
-            else
-                full = false;
-        }).then ( (data) => {
-            //Update playerlist related data
-            if (numOfPlayers > 0) {
-                firebase.database().ref(`/rooms/${ room }`).update({player_count: numOfPlayers, full: full});
-                displayPlayers();
-            } else {
-                firebase.database().ref(`/rooms/${ room }`).remove();
-            }
-        });
 
         if (!playerList || !playerList[username]) {
             $('#auth-content').html(`
@@ -113,6 +97,25 @@ function playerListUpdate() {
                     $('#auth-overlay').delay(500).fadeOut('fast', loadContent('home'));
                 });
         }
+
+        let numOfPlayers = Object.keys(playerList).length;
+
+        full = false;
+        firebase.database().ref(`/rooms/${ room }`).once('value').then( (data) => {
+            if (numOfPlayers >= data.val().max_players)
+                full = true;
+            else
+                full = false;
+        }).then ( (data) => {
+            //Update playerlist related data
+            if (numOfPlayers > 0) {
+                firebase.database().ref(`/rooms/${ room }`).update({player_count: numOfPlayers, full: full});
+                displayPlayers();
+                initializationFinished = true;
+            } else {
+                firebase.database().ref(`/rooms/${ room }`).remove();
+            }
+        });
     });
 }
 
@@ -146,7 +149,7 @@ function leaveRoom() {
 //If the host hasn't been pinging the server, set a new host
 function maintainHost() {
     firebase.database().ref(`/rooms/${ room }/players/${ host }`).once('value').then( (data) => {
-        if (Date.now() - data.val().lastUpdate > 40000)
+        if (!data.exists() || Date.now() - data.val().lastUpdate > 40000)
             firebase.database().ref(`/rooms/${ room }`).update({ host: username })
     });
 }
@@ -176,17 +179,19 @@ function deletePlayers() {
 */
 
 var isStarted = false;
-while (Object.keys(playerList).length < 3) {
-    $(document).ready(function() {
-        $('#game-area').append(`
-            <div class="card mx-auto w-50 mt-5 p-3">
-                <p class="text-center">
-                    Waiting for players...
-                </p>
-                <div class="spinner-border text-primary d-block mx-auto" role="status">
-                    <span class="sr-only">Loading...</span>
-                </div>
+$(document).ready(function() {
+    $('#game-area').append(`
+        <div class="card mx-auto w-50 mt-5 p-3">
+            <p class="text-center">
+                Waiting for players...
+            </p>
+            <div class="spinner-border text-primary d-block mx-auto" role="status">
+                <span class="sr-only">Loading...</span>
             </div>
-        `);
-    });
-};
+        </div>
+    `);
+
+    if (initializationFinished) {
+        //Do stuff
+    }
+});
