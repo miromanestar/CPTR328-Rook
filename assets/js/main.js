@@ -154,6 +154,12 @@ function loadContent(selection, state, changeState) {
         }
     }
 
+    //Something I added specifically for rook
+    if (window.username && window.room && selection !== 'room')
+        $('#rejoin-btn').show();
+    else
+        $('#rejoin-btn').hide();
+
     //Make header link active based on URL
     $('.nav-link').each(function () {
         if ($(this).html().toLowerCase() === location.pathname.split('/')[1] || ( $(this).html().toLowerCase() === 'home' && location.pathname === '/' )) { //Highlight if on home page

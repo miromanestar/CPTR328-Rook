@@ -1,6 +1,6 @@
 //Initialization
-var username = null;
-var room = null;
+var username = username || null;
+var room = room || null;
 var isHost = false;
 var host = null;
 var initializationFinished = false;
@@ -11,15 +11,13 @@ var isLeaving = false;
 var connectionInterval = null;
 
 $(document).ready( function() {
-    if (!window.history.state)
-        loadContent('home');
-
-    username = window.history.state.username;
-    room = window.history.state.room;
+    if (window.history.state) {
+        username = window.history.state.username;
+        room = window.history.state.room;
+    }
 
     $('#room_name').text(room);
 
-    //Figure out if host
     firebase.database().ref(`/rooms/${ room }`).on('value', (data) => {
         if (!data.exists() && !isLeaving) {
             alert(`Connection to game ${ room } was lost.`);
@@ -50,12 +48,17 @@ $(document).ready( function() {
         }
     });
 
-    $('#logout-btn').show();
-    playerListUpdate();
+    if (room && username) {
+        $('#logout-btn').show();
+        playerListUpdate();
+    }
 
     hostStuff();
 
     connectionInterval = setInterval(function() { connectionChecks() }, 20000);
+
+    if (!room && !username)
+        clearInterval(connectionInterval);
 });
 
 
@@ -63,16 +66,18 @@ $(document).ready( function() {
 
 //When called, lets the server know a player is still connected
 function connectionChecks() {
-    firebase.database().ref(`/rooms/${ room }`).once('value').then( (data) => {
-        if (data.exists() && playerList && playerList[username]) {
-            firebase.database().ref(`/rooms/${ room }`).update({ lastUpdate: Date.now() });
-            firebase.database().ref(`/rooms/${ room }/players/${ username }`).update({ lastUpdate: Date.now() });
-            maintainHost();
-            console.log('User connection verified.');
-        } else {
-            clearInterval(connectionInterval);
-        }
-    });
+    if (room && username) {
+        firebase.database().ref(`/rooms/${ room }`).once('value').then( (data) => {
+            if (data.exists() && playerList && playerList[username]) {
+                firebase.database().ref(`/rooms/${ room }`).update({ lastUpdate: Date.now() });
+                firebase.database().ref(`/rooms/${ room }/players/${ username }`).update({ lastUpdate: Date.now() });
+                maintainHost();
+                console.log('User connection verified.');
+            } else {
+                clearInterval(connectionInterval);
+            }
+        });
+    }
 }
 
 function playerListUpdate() {
@@ -96,6 +101,15 @@ function playerListUpdate() {
                     $('#logout-btn').hide();
                     $('#auth-overlay').delay(500).fadeOut('fast', loadContent('home'));
                 });
+
+                if (!playerList)
+                    firebase.database().ref(`/rooms/${ room }`).remove();
+    
+                if (isHost && playerList)
+                    firebase.database().ref(`/rooms/${ room }`).update({ host: Object.keys(playerList)[0] })
+
+                username = null;
+                room = null;
         }
 
         let numOfPlayers = Object.keys(playerList).length;
@@ -137,12 +151,6 @@ function leaveRoom() {
     isLeaving = true;
     if (shouldLeave) {
         firebase.database().ref(`/rooms/${ room }/players/${ username }`).remove();
-
-        if (!playerList)
-            firebase.database().ref(`/rooms/${ room }`).remove();
-
-        if (isHost && playerList)
-            firebase.database().ref(`/rooms/${ room }`).update({ host: Object.keys(playerList)[0] })
     }
 }
 
@@ -261,64 +269,52 @@ function dealCards() {
 
     firebase.database().ref(`/rooms/${ room }`).update({ cards: cards });
 
-    let kitty = {};
-
     let cardRef = firebase.database().ref(`/rooms/${ room }/cards`);
     let kittyRef = firebase.database().ref(`/rooms/${ room }/kitty`);
 
     if (Object.keys(playerList).length === 3) {
         for (let i = 0; i < 6; i++) {
-            getKittyCard();
+            cards = getKittyCard(cards);
         }
     } else if (Object.keys(playerList).length === 4) {
         for (let i = 0; i < 5; i++) {
-            getKittyCard();        
+            cards = getKittyCard(cards);        
         }
     } else if (Object.keys(playerList).length === 5) {
         for (let i = 0; i < 4; i++) {
-            getKittyCard();
+            cards = getKittyCard(cards);
         }
     } else if (Object.keys(playerList).length === 6) {
         for (let i = 0; i < 3; i++) {
-            getKittyCard();
+            cards = getKittyCard(cards);
         }
     }
 
+    firebase.database().ref(`/rooms/${ room }`).update({ cards: cards });
+
     kittyRef.off('value');
 
-    let numCards = 0;
-    cardRef.once('value').then( (data) => {
-        numCards = Object.keys(data.val()).length;
-        dealPlayerCards(numCards, cardRef);
-    });
+    while (Object.keys(cards).length > 0) {
+        for (let player in playerList) {
+            let keys = Object.keys(cards);
+            let cardKey = keys[Math.floor(keys.length * Math.random())];
+            let card = cards[cardKey];
+            firebase.database().ref(`/rooms/${ room }/players/${ player }/cards`).update({ [cardKey]: card });
+            delete cards[cardKey];
+        }
+    }
+
+    firebase.database().ref(`/rooms/${ room }`).update({ cards: cards });
 
     cardRef.off('value');
 }
 
-function dealPlayerCards(numCards, cardRef) {
-    let maxAttempts = Math.floor(numCards/Object.keys(playerList).length);
-    for (let player in playerList) {
-        console.log(player)
-        for (let i = 0; i < maxAttempts; i++) {
-            cardRef.once('value').then( (data) => {
-                let keys = Object.keys(data.val());
-                let cardTemp = data.val();
-                let cardKey = keys[Math.floor(keys.length * Math.random())];
-                let card = cardTemp[cardKey];
-                firebase.database().ref(`/rooms/${ room }/players/${ player }/cards`).update({ [cardKey]: card });
-                firebase.database().ref(`/rooms/${ room }/cards/${ cardKey }`).remove();
-            });
-        }
-    }
-}
+function getKittyCard(cards) {
+    let keys = Object.keys(cards);
+    let cardKey = keys[Math.floor(keys.length * Math.random())];
+    let card = cards[cardKey];
+    firebase.database().ref(`/rooms/${ room }/kitty`).update({ [cardKey]: card });
+    delete cards[cardKey];
 
-function getKittyCard() {
-    firebase.database().ref(`/rooms/${ room }/cards`).once('value').then( (data) => {
-        let keys = Object.keys(data.val());
-        let cardTemp = data.val();
-        let cardKey = keys[Math.floor(keys.length * Math.random())];
-        let card = cardTemp[cardKey];
-        firebase.database().ref(`/rooms/${ room }/kitty`).update({ [cardKey]: card });
-        firebase.database().ref(`/rooms/${ room }/cards/${ cardKey }`).remove();
-    });
-}
+    return cards;
+}   

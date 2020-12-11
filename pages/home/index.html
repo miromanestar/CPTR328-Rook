@@ -50,11 +50,8 @@ function updateRooms() {
 function makeRoom(data) {
     let roomNum = data.key.split(' ').join('_');
 
-    let game_status = data.val().player_count + '/' + data.val().max_players;
-    if (data.val().started === true)
-        game_status = 'Started (' + game_status + ')';
-    else if (data.val().full === true)
-        game_status = 'Full (' + game_status + ')';
+    let players = data.val().player_count + '/' + data.val().max_players;
+    let btnText = 'Join';
 
     let lastUpdated = Date.now() - data.val().lastUpdate;
     let updatedMessage = 'Error';
@@ -66,18 +63,25 @@ function makeRoom(data) {
         lastUpdated = Math.round(lastUpdated/60000) + ' minutes ago';
 
     let elemAttr = `class="room-item d-flex" onclick="enterName('${ data.key }')"`;
-    if (data.val().full === true || data.val().started === true)
+    if (data.key === window.room) {
+        elemAttr = `class="room-item d-flex" onclick="loadContent('room')"`;
+        btnText = 'Rejoin';
+    } else if (data.val().full === true || data.val().started === true) {
         elemClasses = elemAttr = `class="room-item d-flex disabled"`;
+        
+        if (data.val().full) { btnText = 'Full'; }
+        else if (data.val().started) {btnText = 'Started'; }
+    }
 
     const room = `
         <div id="room_${ roomNum }" ${ elemAttr }>
             <li class="list-group-item list-group-item-dark w-100 d-flex justify-content-between align-items-center">
                 ${ data.key }
-                <span><div class="d-block text-right">${ game_status }</div><div class="d-block text-muted">${ lastUpdated }</div></span>
+                <span><div class="d-block text-right">${ players }</div><div class="d-block text-muted">${ lastUpdated }</div></span>
             </li>
-            ${ data.val().full === false && data.val().started === false ? `
-            <button class="btn btn-primary list-btn">Join</button>
-            ` : '<button class="btn btn-primary list-btn disabled">Join</button>' }
+            ${ data.val().full === false && data.val().started === false || data.key === window.room ? `
+            <button class="btn btn-primary list-btn">${ btnText }</button>
+            ` : `<button class="btn btn-primary list-btn disabled">${ btnText }</button>` }
         </div>
     `;
 
