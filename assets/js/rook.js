@@ -78,9 +78,7 @@ function playerListUpdate() {
     let playerData = firebase.database().ref(`/rooms/${ room }/players`);
     playerData.on('value', (data) => {
         playerList = data.val();
-        let numOfPlayers = 0;
-        for (let player in playerList)
-            numOfPlayers++;
+        let numOfPlayers = Object.keys(playerList).length;
 
         full = false;
         firebase.database().ref(`/rooms/${ room }`).once('value').then( (data) => {
