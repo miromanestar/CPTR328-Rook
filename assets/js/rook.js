@@ -35,7 +35,6 @@ $(document).ready( function() {
                 $('#auth-overlay').fadeIn('fast', function() {
                     $('#auth-overlay').delay(500).fadeOut('fast', loadContent('home'));
                 });
-
             return;
         }
 
@@ -98,6 +97,9 @@ function playerListUpdate() {
                 </div>
                 `);
 
+                username = null;
+                room = null;
+
                 $('#auth-overlay').fadeIn('fast', function() {
                     $('#logout-btn').hide();
                     $('#auth-overlay').delay(500).fadeOut('fast', loadContent('home'));
@@ -106,11 +108,8 @@ function playerListUpdate() {
                 if (!playerList)
                     firebase.database().ref(`/rooms/${ room }`).remove();
     
-                if (isHost && playerList)
+                if (isHost && playerList && room)
                     firebase.database().ref(`/rooms/${ room }`).update({ host: Object.keys(playerList)[0] })
-
-                username = null;
-                room = null;
         }
 
         let numOfPlayers = Object.keys(playerList).length;
@@ -123,7 +122,7 @@ function playerListUpdate() {
                 full = false;
         }).then ( (data) => {
             //Update playerlist related data
-            if (numOfPlayers > 0) {
+            if (numOfPlayers > 0 && room) {
                 firebase.database().ref(`/rooms/${ room }`).update({player_count: numOfPlayers, full: full});
                 displayPlayers();
                 initializationFinished = true;
@@ -190,7 +189,7 @@ function deletePlayers() {
     Southern Adventist University
 */
 
-var isStarted = false;
+var isStarted = isStarted || false;
 $(document).ready(function() {
     $('#card-stack').html(`
         <div id="game-launcher" class="card mx-auto w-50 mt-5 p-3">
@@ -210,7 +209,7 @@ $(document).ready(function() {
 
 function initializeGame() {
     firebase.database().ref(`/rooms/${ room }`).on('value', (data) => {
-        if (Object.keys(playerList).length >= 3 & isStarted === false) {
+        if (Object.keys(playerList).length >= 3 && isStarted === false) {
             if (isHost) {
                 $('#card-stack').html(`
                     <button id="login-btn" type="submit" class="btn btn-primary" onclick="startGame();">Start</button>
@@ -224,12 +223,13 @@ function initializeGame() {
                         <span class="sr-only">Loading...</span>
                     </div>
                 `);  
-            }
+            } 
+
             //Tells all connected clients to run whatever command is specified
             firebase.database().ref(`/rooms/${ room }/cmd`).on('value', (data) => {
                 window[data.val()]();
             });
-        } else {
+        } else if (isStarted === false) {
             $('#card-stack').html(`
                 <p class="text-center">
                     Waiting for players...
@@ -238,6 +238,9 @@ function initializeGame() {
                     <span class="sr-only">Loading...</span>
                 </div>
             `);
+        } else {
+            resumeGame();
+            firebase.database().ref(`/rooms/${ room }`).off();
         }
     });
 }
@@ -249,7 +252,136 @@ function startGame() {
     game.update({ started: true });
 
     dealCards();
-    beginGame();
+    let cmdRef = firebase.database().ref(`/rooms/${ room }/cmd`);
+    cmdRef.set('displayPlayerCards');
+
+    //Begin bidding
+    cmdRef.set('startBidding');
+}
+
+function resumeGame() {
+    displayPlayerCards();
+    startBidding();
+}
+
+function winBid(winner) {
+    if (username === winner) {
+        firebase.database().ref(`/rooms/${ room }/kitty`).once('value').then( (data) => {
+            let cards = data.val();
+            for (let card in cards) {
+                firebase.database().ref(`/rooms/${ room }/players/${ username }/cards`).update({ [card]: cards[card] });
+            }
+            $('#card-stack').html(`
+                <p class="text-center">
+                    Select ${ Object.keys(cards).length } cards to discard.
+                </p>
+            `);
+            displayPlayerCards(`markCard(this, ${ Object.keys(cards).length })`);
+        });
+    } else {
+        $('#card-stack').html(`
+                <p class="text-center">
+                    Waiting on ${ winner } to discard kitty cards and select trump card...
+                </p>
+                <div class="spinner-border text-primary d-block mx-auto" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            `);  
+    }
+}
+
+//Mark card to discard back to the kitty
+function markCard(card, kitty_length) {
+    let markedCards = $('.card.marked').length;
+
+    if ($(card).hasClass('marked')) {
+        markedCards--;
+        $(card).removeClass('marked');
+        $('#card-stack').html(`
+            <p class="text-center">
+                Select ${ kitty_length - markedCards } more card(s).
+            </p>
+        `);
+    } else if (markedCards < kitty_length) {
+        $(card).addClass('marked');
+        markedCards++;
+
+        if (kitty_length > markedCards)
+            $('#card-stack').html(`
+                <p class="text-center">
+                    Select ${ kitty_length - markedCards } more card(s).
+                </p>
+            `);
+        else
+            $('#card-stack').html(`
+                <p class="text-center">You have selected ${ markedCards }. Are you finished?
+                <button id="finish-bid-btn" type="button" class="btn btn-info w-100 mt-3">Finish</button>
+            `);
+    }
+}
+
+function startBidding() {
+    if (isHost)
+        firebase.database().ref(`/rooms/${ room }/game/bid`).set({ bidder: Object.keys(playerList)[0], value: 80 });
+
+    firebase.database().ref(`/rooms/${ room }/game/bid`).on('value', (data) => {
+        if (data.exists()) {
+            if (data.val().consPasses === Object.keys(playerList).length - 1 || data.val().bid >= 200) {
+                firebase.database().ref(`/rooms/${ room }/game/bid`).off();
+                winBid(data.val().bidder);
+            } else if (data.val().bidder === username) {
+                $('#card-stack').html(`
+                    <div>
+                        <p>Current Bidder: ${ data.val().bidder }</p>
+                        <p>Current Bid: ${ data.val().value }</p>
+                    </div>
+                    <form id="bidding-form" class="bidform" onsubmit="bid(${ data.val().consPasses }); return false;">
+                        <input id="bid-input" class="minimal-input" type="number" oninput="toggleBidButton(this.value);" step="5" min="${ parseInt(data.val().value) + 5 }" max="200" name="bid-input" placeholder="Enter bid">
+                        <button id="bid-btn" type="submit" class="btn btn-danger w-100 mt-3">Pass</button>
+                    </form>
+                `);
+            } else {
+                $('#card-stack').html(`
+                    <div>
+                        <p>Current Bidder: ${ data.val().bidder }</p>
+                        <p>Last Bid: ${ data.val().value }</p>
+                    </div>
+                `);
+            }
+        }
+    });
+}
+
+function bid(passes) {
+    let oldBidderIndex = Object.keys(playerList).indexOf(username);
+    let newBidderIndex = oldBidderIndex + 1;
+    if (oldBidderIndex >= Object.keys(playerList).length - 1)
+        newBidderIndex = 0;
+
+    if ($('#bid-input').val() !== '') {
+        firebase.database().ref(`/rooms/${ room }/game/bid`).set({ 
+                value: $('#bid-input').val(),
+                bidder: Object.keys(playerList)[newBidderIndex],
+                consPasses: null
+            });
+    } else {
+        firebase.database().ref(`/rooms/${ room }/game/bid`).update({
+            bidder: Object.keys(playerList)[newBidderIndex],
+            consPasses: passes + 1 || 1
+        });
+    }
+    
+    return false;
+}
+
+function toggleBidButton(value) {
+    if (value === '') {
+        $('#bid-btn').text('Pass');
+        $('#bid-btn').removeClass('btn-primary').addClass('btn-danger');
+    } else {
+        $('#bid-btn').text('Bid');
+        $('#bid-btn').removeClass('btn-danger').addClass('btn-primary');
+    }
 }
 
 function dealCards() {
@@ -260,6 +392,7 @@ function dealCards() {
                 cards[color + ' ' + i] = {
                     value: i !== 1 ? i : 15,
                     name: color + ' ' + (i < 10 ? '0' + i : i),
+                    suit: color,
                     path: '/assets/images/cards/' + color + ' ' + (i < 10 ? '0' + i : i) + '.svg'
                 };
             }
@@ -268,12 +401,12 @@ function dealCards() {
     cards['Rook'] = {
         value: 20,
         name: 'Rook',
+        suit: 'Rook',
         path: '/assets/images/cards/Crow.svg'
     };
 
     firebase.database().ref(`/rooms/${ room }`).update({ cards: cards });
 
-    let cardRef = firebase.database().ref(`/rooms/${ room }/cards`);
     let kittyRef = firebase.database().ref(`/rooms/${ room }/kitty`);
 
     kittyRef.remove();
@@ -297,8 +430,6 @@ function dealCards() {
 
     firebase.database().ref(`/rooms/${ room }`).update({ cards: cards });
 
-    kittyRef.off('value');
-
     while (Object.keys(cards).length > 0) {
         for (let player in playerList) {
             let keys = Object.keys(cards);
@@ -310,8 +441,6 @@ function dealCards() {
     }
 
     firebase.database().ref(`/rooms/${ room }`).update({ cards: cards });
-
-    cardRef.off('value');
 }
 
 function getKittyCard(cards) {
@@ -325,24 +454,17 @@ function getKittyCard(cards) {
 }
 
 //Will dynamically update the card display for the user as they make changes
-function displayPlayerCards() {
+function displayPlayerCards(command) {
+    isStarted = true;
     firebase.database().ref(`/rooms/${ room }/players/${ username }/cards/`).on('value', (data) => {
         $('#player-cards').empty();
 
         let cards = data.val();
         for (let card in cards) {
             $('#player-cards').append(`
-                <div class="card player-card" onclick="alert('Idk')" style="background: url('${ cards[card].path }'); background-size: 100% 100%;">
+                <div class="card player-card" onclick="${ command }" style="background: url('${ cards[card].path }'); background-size: 100% 100%;">
                 </div>
             `);
         }
     });
-}
-
-function beginGame() {
-    let cmdRef = firebase.database().ref(`/rooms/${ room }/cmd`);
-    cmdRef.set('displayPlayerCards');
-    $('#card-stack').html(`
-        <p>Game has begun... I guess... Now what?
-    `)
 }

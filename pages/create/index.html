@@ -48,8 +48,13 @@ function authRoom() {
 }
 
 function createRoom(room_name) {
+    if (window.username && window.room) {
+        alert('You are already in a room.');
+        return;
+    }
+
     var room_name = $('#room-name-input').val();
-    let username = $('#name-input').val();
+    let name = $('#name-input').val();
     let max_players = $('#max-players-select').val();
     let room_password = $('#password-input').val();
 
@@ -58,10 +63,10 @@ function createRoom(room_name) {
                 'max_players': max_players,
                 'password': room_password,
                 'player_count': 1,
-                'host': username,
+                'host': name,
                 'full': false,
                 'players': {
-                    [username]: {
+                    [name]: {
                         'joined': Date.now(),
                         'lastUpdate': Date.now()
                     }
@@ -81,7 +86,7 @@ function createRoom(room_name) {
                 </div>
             </div>
             `).fadeIn('fast', function() {
-                $('#auth-overlay').delay(300).fadeOut('fast', loadContent('room', { username: username, room: room_name, isHost: true }));
+                $('#auth-overlay').delay(300).fadeOut('fast', loadContent('room', { username: name, room: room_name, isHost: true }));
             });
         });
     });

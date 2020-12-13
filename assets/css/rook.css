@@ -53,3 +53,7 @@
     transform: scale(1.05);
     cursor: pointer;
 }
+
+.card.marked {
+    filter: brightness(0.4);
+}
