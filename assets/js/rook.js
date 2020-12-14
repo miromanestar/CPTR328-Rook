@@ -282,7 +282,7 @@ function winTrick(cards, trump, trickSuite) {
                 winningCard = cards[card].name;
             }
         }
-        } 
+    } 
         
 
     $('#card-stack').html(`
@@ -298,13 +298,14 @@ function winTrick(cards, trump, trickSuite) {
         </div>
         `);
     }
-        
+
     firebase.database().ref(`/rooms/${ room }/players/${ username }/cards`).once('value').then( (data) => {
         if (data.exists()) {
-            if (isHost && $('#next-trick-btn').length === 0)
+            if (isHost && $('.btn-info').length === 0) {
                 $('#card-stack').append(`
                     <button id="next-trick-btn" type="button" onclick="startTrick('${ winner }')" class="btn btn-info w-100 mt-3">Next Trick</button>
                 `);
+            }
         } else {
             firebase.database().ref(`/rooms/${ room }/game/tricks`).off();
 
@@ -374,8 +375,14 @@ function startTrick(winner) {
                 first: currentPlayer,
                 trickSuite: null,
                 cards: null
-            });
+            }).then(function() { doTrick(); });
         });
+
+    if (!isHost)
+        doTrick();
+}
+
+function doTrick() {
     $('.card.player-card').attr('onclick', '');
 
     firebase.database().ref(`/rooms/${ room }/game/tricks`).on('value', (data) => {
@@ -383,6 +390,9 @@ function startTrick(winner) {
             if (data.val().cards && Object.keys(data.val().cards).length === Object.keys(playerList).length) {
                 $('.player-card').addClass('marked').attr('onclick');
                 winTrick(data.val().cards, data.val().trump, data.val().trickSuite);
+
+                if (isHost)
+                    firebase.database().ref(`/rooms/${ room }/game/tricks`).off();
             } else {
                 let cards = data.val().cards;
                 if (cards && Object.keys(cards).length > 0) {
