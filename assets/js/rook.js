@@ -349,7 +349,7 @@ function discardMarkedCards() {
             kitty[card] = cards[card];
             firebase.database().ref(`/rooms/${ room }/players/${ username }/cards/${ card }`).remove();
         });
-        firebase.database().ref(`/rooms/${ room }`).update({ kitty: kitty });
+        firebase.database().ref(`/rooms/${ room }/players/${ username }`).update({ kitty: kitty });
     });
 
     $('#card-stack').html(`
