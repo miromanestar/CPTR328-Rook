@@ -97,6 +97,12 @@ function playerListUpdate() {
                 </div>
                 `);
 
+                if (!playerList)
+                    firebase.database().ref(`/rooms/${ room }`).remove();
+    
+                if (isHost && playerList && room)
+                    firebase.database().ref(`/rooms/${ room }`).update({ host: Object.keys(playerList)[0] })
+
                 username = null;
                 room = null;
 
@@ -104,12 +110,6 @@ function playerListUpdate() {
                     $('#logout-btn').hide();
                     $('#auth-overlay').delay(500).fadeOut('fast', loadContent('home'));
                 });
-
-                if (!playerList)
-                    firebase.database().ref(`/rooms/${ room }`).remove();
-    
-                if (isHost && playerList && room)
-                    firebase.database().ref(`/rooms/${ room }`).update({ host: Object.keys(playerList)[0] })
         }
 
         let numOfPlayers = Object.keys(playerList).length;
@@ -261,7 +261,25 @@ function startGame() {
 
 function resumeGame() {
     displayPlayerCards();
-    startBidding();
+}
+
+function startTricks() {
+    if (isHost)
+        firebase.database().ref(`/rooms/${ room }/game/bid`).value('once').then( (data) => {
+            let currentPlayer = getNextPlayer(data.val().bidder);
+            firebase.database().ref(`/rooms/${ room }/game/tricks`).set({ current: currentPlayer, first: currentPlayer });
+        });
+
+    firebase.database().ref(`/rooms/${ room }/game/tricks`).on('value', (data) => {
+        if (data.exists()) {
+            if (false) {
+                //Win?
+            } else if (data.val().current === username) {
+                $('#card-stack').html(`
+                `);
+            }
+        }
+    });
 }
 
 function winBid(winner) {
@@ -299,7 +317,7 @@ function markCard(card, kitty_length) {
         $(card).removeClass('marked');
         $('#card-stack').html(`
             <p class="text-center">
-                Select ${ kitty_length - markedCards } more card(s).
+                Select ${ kitty_length - markedCards } more card(s)
             </p>
         `);
     } else if (markedCards < kitty_length) {
@@ -314,10 +332,41 @@ function markCard(card, kitty_length) {
             `);
         else
             $('#card-stack').html(`
-                <p class="text-center">You have selected ${ markedCards }. Are you finished?
-                <button id="finish-bid-btn" type="button" class="btn btn-info w-100 mt-3">Finish</button>
+                <p class="text-center">You have selected ${ markedCards }. Are you finished?</p>
+                <button id="finish-bid-btn" type="button" onclick="discardMarkedCards()" class="btn btn-info w-100 mt-3">Finish</button>
             `);
     }
+}
+
+function discardMarkedCards() {
+    firebase.database().ref(`/rooms/${ room }/kitty`).remove();
+
+    firebase.database().ref(`/rooms/${ room }/players/${ username }/cards`).once('value').then( (data) => {
+        let cards = data.val();
+        let kitty = {};
+        $('.card.marked').each(function() {
+            let card = $(this).attr('name');
+            kitty[card] = cards[card];
+            firebase.database().ref(`/rooms/${ room }/players/${ username }/cards/${ card }`).remove();
+        });
+        firebase.database().ref(`/rooms/${ room }`).update({ kitty: kitty });
+    });
+
+    $('#card-stack').html(`
+        <label class="text-center">Select round's trump suit</label>
+        <select class="form-control minimal-input" id="trump-select">
+                <option>Black</option>
+                <option>Green</option>
+                <option>Red</option>
+                <option>Yellow</option>
+        </select>
+        <button id="trump-select-btn" type="button" onclick="setTrumpSuit()" class="btn btn-info w-100 mt-3">Select</button>
+    `);
+}
+
+function setTrumpSuit() {
+    firebase.database().ref(`/rooms/${ room }/game`).update({ trump: $('#trump-select').val() });
+    firebase.database().ref(`/rooms/${ room }/cmd`).set('startTricks');
 }
 
 function startBidding() {
@@ -462,9 +511,17 @@ function displayPlayerCards(command) {
         let cards = data.val();
         for (let card in cards) {
             $('#player-cards').append(`
-                <div class="card player-card" onclick="${ command }" style="background: url('${ cards[card].path }'); background-size: 100% 100%;">
+                <div class="card player-card" name="${ card }" onclick="${ command }" style="background: url('${ cards[card].path }'); background-size: 100% 100%;">
                 </div>
             `);
         }
     });
+}
+
+function getNextPlayer(current) {
+    let currentPlayerIndex = Object.keys(playerList).indexOf(current);
+    let nextPlayerIndex = currentPlayerIndex + 1;
+    if (currentPlayerIndex >= Object.keys(playerList).length - 1)
+        nextPlayerIndex = 0;
+    return Object.keys(playerList)[nextPlayerIndex];
 }
