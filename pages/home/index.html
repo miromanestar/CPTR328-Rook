@@ -96,7 +96,7 @@ function deleteRoom(data) {
 }
 
 function noRooms() {
-    if ($('#room_list').children().length === 0)
+    if ($('#room_list').children().length === 0 && $('.alert-danger').length === 0)
         $('#room_list').before(`<div id="no_room_error" class="text-center alert alert-danger">No rooms were found.</div>`);
     else
         $('#no_room_error').remove();

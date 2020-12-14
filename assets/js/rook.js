@@ -372,7 +372,7 @@ function startTrick(winner) {
             firebase.database().ref(`/rooms/${ room }/game/tricks`).update({
                 current: currentPlayer,
                 first: currentPlayer,
-                trickSuite: 'Any',
+                trickSuite: null,
                 cards: null
             });
         });
@@ -388,12 +388,12 @@ function startTrick(winner) {
                 if (cards && Object.keys(cards).length > 0) {
                     $('#card-stack').html(`
                         <p class="text-center">It's ${ data.val().current }'s turn!</p>
-                        <p class="text-center">Trump: ${ data.val().trump }<p>
+                        <p class="text-center">Trump: ${ data.val().trump } | Suite: ${ data.val().trickSuite }<p>
                         <div id="card-stack-cards"></div>`
                      );
                     for (let card in cards)
                         $('#card-stack-cards').append(`
-                            <div class="card" name="${ card }">
+                            <div class="card center-card" name="${ card }">
                                 <p>${ card }</p>
                                 <div class="card inner-card" style="background: url('${ cards[card].path }'); background-size: 100% 100%;"></div>
                             </div>
@@ -445,24 +445,26 @@ function makeCardsPlayable(trick_suite) {
 function playCard(card) {
     firebase.database().ref(`/rooms/${ room }/players/${ username }/cards`).once('value').then( (data) => {
         let cards = data.val();
-
-        firebase.database().ref(`/rooms/${ room }/game/tricks/cards`).update({
-            [username]: cards[card]
-        });
-
+        
         firebase.database().ref(`/rooms/${ room }/game/tricks/cards`).once('value').then( (data) => {
             if (data.exists()) {
                 firebase.database().ref(`/rooms/${ room }/game/tricks`).update({
-                    current: getNextPlayer(username),
-                    trickSuite: card.split(' ')[0]
+                    current: getNextPlayer(username)
                 });
             } else {
                 firebase.database().ref(`/rooms/${ room }/game/tricks`).update({
-                    current: getNextPlayer(username)
+                    current: getNextPlayer(username),
+                    trickSuite: cards[card].suit
                 });
             }
+        });
 
-            firebase.database().ref(`/rooms/${ room }/players/${ username }/cards/${ card }`).remove();
+        firebase.database().ref(`/rooms/${ room }/game/tricks/cards`).update({
+            [username]: cards[card]
+        }).then(function() {
+            firebase.database().ref(`/rooms/${ room }/players/${ username }/cards/${ card }`).remove().then(function() { 
+                $('.player-card').addClass('marked').attr('onclick') 
+            });
         });
     });
 }
@@ -482,6 +484,7 @@ function winBid(winner) {
             displayPlayerCards(`markCard(this, ${ Object.keys(cards).length })`);
         });
     } else {
+        $('.card.player-card').attr('onclick', '').addClass('marked');
         $('#card-stack').html(`
                 <p class="text-center">
                     Waiting on ${ winner } to discard kitty cards and select trump card...
@@ -535,6 +538,7 @@ function discardMarkedCards() {
             firebase.database().ref(`/rooms/${ room }/players/${ username }/cards/${ card }`).remove();
         });
         firebase.database().ref(`/rooms/${ room }/players/${ username }`).update({ kitty: kitty });
+        $('.card.player-card').attr('onclick', '').addClass('marked');
     });
 
     $('#card-stack').html(`
@@ -558,6 +562,7 @@ function startBidding() {
     if (isHost)
         firebase.database().ref(`/rooms/${ room }/game/bid`).set({ bidder: Object.keys(playerList)[0], value: 80 });
 
+    $('.card.player-card').attr('onclick', '').addClass('marked');
     firebase.database().ref(`/rooms/${ room }/game/bid`).on('value', (data) => {
         if (data.exists()) {
             if (data.val().consPasses === Object.keys(playerList).length - 1 || data.val().bid >= 200) {
