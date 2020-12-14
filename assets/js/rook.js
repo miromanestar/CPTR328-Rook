@@ -116,7 +116,7 @@ function playerListUpdate() {
 
         full = false;
         firebase.database().ref(`/rooms/${ room }`).once('value').then( (data) => {
-            if (numOfPlayers >= data.val().max_players)
+            if (numOfPlayers >= parseInt(data.val().max_players))
                 full = true;
             else
                 full = false;
@@ -139,7 +139,10 @@ function displayPlayers() {
     for (let player in playerList) {
         let p = playerList[player];
         $('#player-area').append(`
-        <div class="card">${ player }</div>
+        <div class="card">
+            <p class="text-center">${ player }</p>
+            ${ (playerList[player].score) ? `<p>Score: ${ playerList[player].score }</p>` : 'Score: 0' }
+        </div>
         `);
     }
 }
@@ -263,22 +266,204 @@ function resumeGame() {
     displayPlayerCards();
 }
 
-function startTricks() {
+function winTrick(cards, trump, trickSuite) {
+    let maxVal = 0;
+    let winner = "";
+    let winningCard = "";
+
+    for (let card in cards) {
+        if (cards[card].suit === trickSuite || cards[card].suit ===  trump || cards[card].suit === 'Rook'){
+            if (cards[card].suit === trump) {
+                cards[card].value *= 100;
+            }
+            if (cards[card].value > maxVal) {
+                maxVal = cards[card].value;
+                winner = card;
+                winningCard = cards[card].name;
+            }
+        }
+        } 
+        
+
+    $('#card-stack').html(`
+            <p class="text-center">${ winner } won this round with a ${ winningCard }</p>
+            <div id="card-stack-cards"></div>`
+        );
+
+    for (let card in cards) {
+        $('#card-stack-cards').append(`
+        <div class="card center-card" name="${ card }">
+            <p>${ card }</p>
+            <div class="card inner-card" style="background: url('${ cards[card].path }'); background-size: 100% 100%;"></div>
+        </div>
+        `);
+    }
+        
+    firebase.database().ref(`/rooms/${ room }/players/${ username }/cards`).once('value').then( (data) => {
+        if (data.exists()) {
+            if (isHost && $('#next-trick-btn').length === 0)
+                $('#card-stack').append(`
+                    <button id="next-trick-btn" type="button" onclick="startTrick('${ winner }')" class="btn btn-info w-100 mt-3">Next Trick</button>
+                `);
+        } else {
+            firebase.database().ref(`/rooms/${ room }/game/tricks`).off();
+
+            if (isHost)
+                $('#card-stack').prepend(`
+                    <button id="next-trick-btn" type="button" onclick="startGame();" class="btn btn-info w-100 mt-3">Next Round</button>
+                `);
+
+            calculateRoundWinner(winner);
+        }
+    });
+}
+
+function calculateRoundWinner(winner) {
+    firebase.database().ref(`/rooms/${ room }/game/bid/`).once('value').then( (data) => {
+        for (let player in playerList) {
+            let points = playerList[player].score || 0;
+            for (let card in playerList[player].kitty) {
+                if (winner) {
+                    points += 20
+                }
+                if (playerList[player].kitty[card].value === 5) {
+                    points += 5
+                } else if (playerList[player].kitty[card].value === 10 || playerList[player].kitty[card].value == 14) {
+                    points += 10
+                } else if (playerList[player].kitty[card].value === 1) {
+                    points += 15
+                } else if (playerList[player].kitty[card].value === 20) {
+                    points += 20
+                }
+            }
+            
+            if (data.val().bidder === player) {
+                if (data.val().value > points){
+                    points -= data.val().value;
+                } else {
+                    points += data.val().value;
+                }
+            }
+    
+            if (isHost)
+                firebase.database().ref(`/rooms/${ room }/players/${ player }/`).update({ score: points });
+        }
+    
+        let highestScore = 0;
+        let winningPlayer = '';
+        for (let player in playerList) {
+            if (playerList[player].score >= 100 && playerList[player].score > highestScore) {
+                highestScore = playerList[player].score;
+                winningPlayer = player;
+            }
+        }
+
+        $('card-stack').prepend(`
+            <p class="text-center">The winner for this round is ${ winningPlayer } with a score of ${ highestScore }!</p>
+        `);
+
+    });
+}
+
+function startTrick(winner) {
     if (isHost)
-        firebase.database().ref(`/rooms/${ room }/game/bid`).value('once').then( (data) => {
-            let currentPlayer = getNextPlayer(data.val().bidder);
-            firebase.database().ref(`/rooms/${ room }/game/tricks`).set({ current: currentPlayer, first: currentPlayer });
+        firebase.database().ref(`/rooms/${ room }/game/bid`).once('value').then( (data) => {
+            let currentPlayer = winner || getNextPlayer(data.val().bidder);
+            firebase.database().ref(`/rooms/${ room }/game/tricks`).update({
+                current: currentPlayer,
+                first: currentPlayer,
+                trickSuite: 'Any',
+                cards: null
+            });
         });
+    $('.card.player-card').attr('onclick', '');
 
     firebase.database().ref(`/rooms/${ room }/game/tricks`).on('value', (data) => {
         if (data.exists()) {
-            if (false) {
-                //Win?
-            } else if (data.val().current === username) {
-                $('#card-stack').html(`
-                `);
+            if (data.val().cards && Object.keys(data.val().cards).length === Object.keys(playerList).length) {
+                $('.player-card').addClass('marked').attr('onclick');
+                winTrick(data.val().cards, data.val().trump, data.val().trickSuite);
+            } else {
+                let cards = data.val().cards;
+                if (cards && Object.keys(cards).length > 0) {
+                    $('#card-stack').html(`
+                        <p class="text-center">It's ${ data.val().current }'s turn!</p>
+                        <p class="text-center">Trump: ${ data.val().trump }<p>
+                        <div id="card-stack-cards"></div>`
+                     );
+                    for (let card in cards)
+                        $('#card-stack-cards').append(`
+                            <div class="card" name="${ card }">
+                                <p>${ card }</p>
+                                <div class="card inner-card" style="background: url('${ cards[card].path }'); background-size: 100% 100%;"></div>
+                            </div>
+                        `);
+                } else {
+                    if (data.val().current === username)
+                        $('#card-stack').html(`<p class="text-center">Please select any card to play</p>`);
+                    else
+                        $('#card-stack').html(`<p class="text-center">Waiting on ${ data.val().current } to play first card.</p>`);
+                }
+
+                if (data.val().current === username) {
+                    $('.player-card').removeClass('marked')
+                    makeCardsPlayable(data.val().trickSuite);
+                } else {
+                    $('.player-card').addClass('marked').attr('onclick');
+                }
             }
         }
+    });
+}
+
+function makeCardsPlayable(trick_suite) {
+    let trick_suite_cards = 0;
+    $('.player-card').each(function() {
+        let suite = $(this).attr('name').split(' ')[0];
+
+        if (suite === trick_suite)
+            trick_suite_cards++;
+    });
+
+    if (trick_suite_cards > 0) {
+        $('.player-card').each(function() {
+            let suite = $(this).attr('name').split(' ')[0];
+
+            if (suite !== trick_suite) {
+                $(this).addClass('marked');
+            } else {
+                $(this).attr('onclick', `playCard('${ $(this).attr('name') }')`);
+            }
+        });
+    } else {
+        $('.player-card').each(function() {
+            $(this).attr('onclick', `playCard('${ $(this).attr('name') }')`);
+        });
+    }
+}
+
+function playCard(card) {
+    firebase.database().ref(`/rooms/${ room }/players/${ username }/cards`).once('value').then( (data) => {
+        let cards = data.val();
+
+        firebase.database().ref(`/rooms/${ room }/game/tricks/cards`).update({
+            [username]: cards[card]
+        });
+
+        firebase.database().ref(`/rooms/${ room }/game/tricks/cards`).once('value').then( (data) => {
+            if (data.exists()) {
+                firebase.database().ref(`/rooms/${ room }/game/tricks`).update({
+                    current: getNextPlayer(username),
+                    trickSuite: card.split(' ')[0]
+                });
+            } else {
+                firebase.database().ref(`/rooms/${ room }/game/tricks`).update({
+                    current: getNextPlayer(username)
+                });
+            }
+
+            firebase.database().ref(`/rooms/${ room }/players/${ username }/cards/${ card }`).remove();
+        });
     });
 }
 
@@ -365,8 +550,8 @@ function discardMarkedCards() {
 }
 
 function setTrumpSuit() {
-    firebase.database().ref(`/rooms/${ room }/game`).update({ trump: $('#trump-select').val() });
-    firebase.database().ref(`/rooms/${ room }/cmd`).set('startTricks');
+    firebase.database().ref(`/rooms/${ room }/game/tricks`).update({ trump: $('#trump-select').val() });
+    firebase.database().ref(`/rooms/${ room }/cmd`).set('startTrick');
 }
 
 function startBidding() {
