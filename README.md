@@ -1,6 +1,6 @@
 # CPTR328-Rook
-## Welcome to the github repository for our game, Rook!
-### Miro Manestar & Jacob Bahn - Principles of Computer Networking
+### Welcome to the github repository for our game, Rook!
+#### Miro Manestar & Jacob Bahn - Principles of Computer Networking
 
 ## How To Use
 - To play the game, please visit [here](https://rook.miromanestar.com)
