@@ -16,7 +16,7 @@ $(document).ready( function() {
         room = window.history.state.room;
     }
 
-    $('#room_name').text(room);
+    $('#room_name').text(`Welcome ${ username } to ${ room }!`);
 
     firebase.database().ref(`/rooms/${ room }`).on('value', (data) => {
         if (!data.exists() && !isLeaving) {
