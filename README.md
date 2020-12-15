@@ -21,6 +21,8 @@ The game goes through two "states" after it is started, listed below:
 2. Discarding
 3. Tricks
 
+NOTE: If you visit another page while the game is in session, you won't be able to properly join back into the game. You'll have to restart the game.
+
 The host will control the transitions between each "state". Only they will get a button to start the game, and a button between tricks and rounds to begin the next cycle.
 
 The game ends with the first player to reach a score over 500 points.
