@@ -25,7 +25,7 @@ The host will control the transitions between each "state". Only they will get a
 
 The game ends with the first player to reach a score over 500 points.
 
-Click (here)[https://rook.miromanestar.com/rules] for a more comprehensive set of rules.
+Click [here](https://rook.miromanestar.com/rules) for a more comprehensive set of rules.
 
 ### Bidding
 In bidding, the player whose name is alphabetically just above the host becomes the first bidder. They may choose to pass or bid at least 5 points above the minimum bid of 80 (The bids must be in increments of 5). The maximum bid is 200. A bid winner is selected when all three players consecutively pass in bidding. At the end of the round, if the bid winner got at least as many points as they bid for the hand, they get the bid added to their score. Otherwise, they get the bid subtracted from their score.
