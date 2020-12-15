@@ -55,4 +55,4 @@ If you're having an issue, look here to see how you might fix them:
 This game is quite buggy, so a lot of things tend to break in unpredictable ways. Also... PLEASE do not stress test this thing. It will NOT survive. It is built with whatever the programming equivalent of scotch tape and prayers are. It is not robust, merely a proof of concept. This game is basically "serverless", and has a topology better resembling a P2P network with a single point of failure more than anything else. On the plus side, it is really convenient and easy to use... mostly.
 
 
-**Miro Manestar & Jacob Bahn &copy; 2020. All Rights Reserved.
+**Miro Manestar & Jacob Bahn &copy; 2020. All Rights Reserved.**
