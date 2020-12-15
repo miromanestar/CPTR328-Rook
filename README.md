@@ -52,7 +52,8 @@ If you're having an issue, look here to see how you might fix them:
     * Because this game is pretty much entirely client side, it means that even clients have to delete rooms when they leave. Unfortunately, sometimes due to latency between the database and the client, the client fails to receive updated information in time and sometimes the room stays active. Your client will automatically delete the room if it remains inactive for more than 15 minutes.
 - I keep getting "leaving room "null" after leaving a room.
     * This means that a listener failed to deactivate when you left a room. Refresh the window to get rid of it.
-
+- I accidentally clicked another link and visited another page. When I clicked "rejoin", the game wouldn't resume.
+    * Originally, the intent was for the user to be able to visit other pages and "rejoin" the game. However, I couldn't get synchronizing states to reliably work, so the rejoin button only works before the game has officially started. You'll have to create a new room and restart the game.
 # Disclaimer
 This game is quite buggy, so a lot of things tend to break in unpredictable ways. Also... PLEASE do not stress test this thing. It will NOT survive. It is built with whatever the programming equivalent of scotch tape and prayers are. It is not robust, merely a proof of concept. This game is basically "serverless", and has a topology better resembling a P2P network with a single point of failure more than anything else. On the plus side, it is really convenient and easy to use... mostly.
 
