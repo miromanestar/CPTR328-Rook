@@ -141,9 +141,8 @@ function displayPlayers() {
         $('#player-area').append(`
         <div class="card">
             <p class="text-center">${ player }</p>
-            ${ (playerList[player].score) ? `<p>Score: ${ playerList[player].score }</p>` : 'Score: 0' }
-            <br />
-            ${ (playerList[player].roundScore) ? `<p>Score: ${ playerList[player].roundScore }</p>` : 'Round: 0' }
+            ${ (playerList[player].score) ? `<div>Score: ${ playerList[player].score }</div>` : 'Score: 0' }
+            ${ (playerList[player].roundScore) ? `<div>Round: ${ playerList[player].roundScore }</div>` : 'Round: 0' }
         </div>
         `);
     }
@@ -623,7 +622,7 @@ function startBidding() {
     $('.card.player-card').attr('onclick', '').addClass('marked');
     firebase.database().ref(`/rooms/${ room }/game/bid`).on('value', (data) => {
         if (data.exists()) {
-            if (data.val().consPasses === Object.keys(playerList).length - 1 || data.val().bid >= 200) {
+            if (data.val().consPasses === Object.keys(playerList).length || data.val().bid >= 200) {
                 firebase.database().ref(`/rooms/${ room }/game/bid`).off();
                 winBid(data.val().bidder);
             } else if (data.val().bidder === username) {
