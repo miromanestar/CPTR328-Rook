@@ -5,6 +5,10 @@
     justify-content: center;
 }
 
+#player-area .card {
+    padding: 10px;
+}
+
 .card {
     background-color: var(--secondary-color);
     margin: 5px 5px;
@@ -24,7 +28,8 @@
     -webkit-overflow-scrolling: touch;
     width: 100%;
     cursor: grab;
-    margin-top: 28%;
+    margin-top: 5%;
+    justify-content: center;
 }
 
 #player-cards::-webkit-scrollbar {
@@ -63,6 +68,7 @@
     height: 220px;
     flex: 0 0 auto;
     transition: .2s;
+    border: none;
 }
 
 .card.center-card p {

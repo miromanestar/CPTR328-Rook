@@ -142,6 +142,8 @@ function displayPlayers() {
         <div class="card">
             <p class="text-center">${ player }</p>
             ${ (playerList[player].score) ? `<p>Score: ${ playerList[player].score }</p>` : 'Score: 0' }
+            <br />
+            ${ (playerList[player].roundScore) ? `<p>Score: ${ playerList[player].roundScore }</p>` : 'Round: 0' }
         </div>
         `);
     }
@@ -251,11 +253,20 @@ function initializeGame() {
 function startGame() {
     let game = firebase.database().ref(`/rooms/${ room }`);
 
+    for (let player in playerList) {
+        firebase.database().ref(`/rooms/${ room }/players/${ player }/kitty`).remove();
+        firebase.database().ref(`/rooms/${ room }/players/${ player }/roundScore`).remove();
+    }
+
+    firebase.database().ref(`/rooms/${ room }/game`).remove();
+    firebase.database().ref(`/rooms/${ room }/kitty`).remove();
+
     isStarted = true;
     game.update({ started: true });
 
     dealCards();
     let cmdRef = firebase.database().ref(`/rooms/${ room }/cmd`);
+    cmdRef.set(null);
     cmdRef.set('displayPlayerCards');
 
     //Begin bidding
@@ -266,7 +277,7 @@ function resumeGame() {
     displayPlayerCards();
 }
 
-function winTrick(cards, trump, trickSuite) {
+function winTrick(cards, trump, trickSuite, kitty) {
     let maxVal = 0;
     let winner = "";
     let winningCard = "";
@@ -282,11 +293,11 @@ function winTrick(cards, trump, trickSuite) {
                 winningCard = cards[card].name;
             }
         }
-    } 
+    }
         
 
     $('#card-stack').html(`
-            <p class="text-center">${ winner } won this round with a ${ winningCard }</p>
+            <p class="text-center">${ winner } won this trick with a ${ winningCard }</p>
             <div id="card-stack-cards"></div>`
         );
 
@@ -299,71 +310,107 @@ function winTrick(cards, trump, trickSuite) {
         `);
     }
 
-    firebase.database().ref(`/rooms/${ room }/players/${ username }/cards`).once('value').then( (data) => {
-        if (data.exists()) {
-            if (isHost && $('.btn-info').length === 0) {
-                $('#card-stack').append(`
-                    <button id="next-trick-btn" type="button" onclick="startTrick('${ winner }')" class="btn btn-info w-100 mt-3">Next Trick</button>
-                `);
+    for (let card in cards)
+        firebase.database().ref(`/rooms/${ room }/players/${ winner }/kitty`).update({
+            [cards[card].name]: cards[card]
+        }).then(function() {
+            if (Object.keys(cards).indexOf(card) === Object.keys(cards).length - 1) {
+                firebase.database().ref(`/rooms/${ room }/players/${ username }/cards`).once('value').then( (data) => {
+                    if (data.exists()) {
+                        if (isHost && $('.btn-info').length === 0) {
+                            $('#card-stack').append(`
+                                <button id="next-trick-btn" type="button" onclick="startTrick('${ winner }')" class="btn btn-info w-100 mt-3">Next Trick</button>
+                            `);
+                        }
+                    } else {
+                        firebase.database().ref(`/rooms/${ room }/game/tricks`).off();
+            
+                        calculateRoundWinner(winner, kitty);
+                    }
+                });
             }
-        } else {
-            firebase.database().ref(`/rooms/${ room }/game/tricks`).off();
-
-            if (isHost)
-                $('#card-stack').prepend(`
-                    <button id="next-trick-btn" type="button" onclick="startGame();" class="btn btn-info w-100 mt-3">Next Round</button>
-                `);
-
-            calculateRoundWinner(winner);
-        }
-    });
+        });
 }
 
-function calculateRoundWinner(winner) {
-    firebase.database().ref(`/rooms/${ room }/game/bid/`).once('value').then( (data) => {
-        for (let player in playerList) {
-            let points = playerList[player].score || 0;
-            for (let card in playerList[player].kitty) {
-                if (winner) {
-                    points += 20
+var roundCalcCooldown = 0;
+function calculateRoundWinner(winner, kitty) {
+    if (roundCalcCooldown === 0)
+        firebase.database().ref(`/rooms/${ room }/game/bid/`).once('value').then( (data) => {
+            for (let player in playerList) {
+                let points = 0;
+                
+                if (player === winner) {
+                    points += 20 + calcPoints(player, kitty);
                 }
-                if (playerList[player].kitty[card].value === 5) {
-                    points += 5
-                } else if (playerList[player].kitty[card].value === 10 || playerList[player].kitty[card].value == 14) {
-                    points += 10
-                } else if (playerList[player].kitty[card].value === 1) {
-                    points += 15
-                } else if (playerList[player].kitty[card].value === 20) {
-                    points += 20
+                
+                points += calcPoints(player, playerList[player].kitty);
+                
+                let bid = parseInt(data.val().value);
+                if (bid === player) {
+                    if (bid > points){
+                        points -= bid;
+                    } else {
+                        points += bid;
+                    }
+                }
+        
+                if (isHost) {
+                    let score = points + (playerList[player].score || 0);
+                    firebase.database().ref(`/rooms/${ room }/players/${ player }/`).update({ score: score, roundScore: points });
                 }
             }
-            
-            if (data.val().bidder === player) {
-                if (data.val().value > points){
-                    points -= data.val().value;
-                } else {
-                    points += data.val().value;
-                }
-            }
-    
-            if (isHost)
-                firebase.database().ref(`/rooms/${ room }/players/${ player }/`).update({ score: points });
-        }
-    
-        let highestScore = 0;
-        let winningPlayer = '';
-        for (let player in playerList) {
-            if (playerList[player].score >= 100 && playerList[player].score > highestScore) {
-                highestScore = playerList[player].score;
-                winningPlayer = player;
-            }
-        }
+        
+            setTimeout(function() { displayRound(); }, 250);
+        });
+        roundCalcCooldown = 1;
+        setTimeout(function() { roundCalcCooldown = 0; }, 1000);
+}
 
-        $('card-stack').prepend(`
-            <p class="text-center">The winner for this round is ${ winningPlayer } with a score of ${ highestScore }!</p>
+function displayRound() {
+    let high_score = 0;
+    let winner = 'UNKNOWN';
+    for (let player in playerList) {
+        if (playerList[player].score > high_score) {
+            high_score = playerList[player].score;
+            winner = player;
+        }
+    }
+
+    if (high_score < 500) {
+        $('#card-stack').prepend(`
+            <p class="text-center">The winner for this round is ${ winner } with a score of ${ high_score }!</p>
         `);
 
-    });
+        if (isHost)
+            $('#card-stack').append(`
+                <button id="next-trick-btn" type="button" onclick="startGame();" class="btn btn-info w-100 mt-3">Next Round</button>
+            `);
+    } else {
+        $('#card-stack').prepend(`
+            <p class="text-center">The winner for this game is ${ winner } with a score of ${ high_score }!</p>
+        `);
+
+        $('#card-stack').append(`
+            <button id="next-trick-btn" type="button" onclick="leaveRoom();" class="btn btn-danger w-100 mt-3">End Game</button>
+        `);
+    }
+}
+
+function calcPoints(player, cards) {
+    let points = 0
+    for (let card in cards) {
+        if (cards[card].value === 5 || cards[card].value === 5 * 100) {
+            points += 5;
+        } else if (cards[card].value === 10 || cards[card].value == 14 || cards[card].value === 10 * 100 || cards[card].value === 14 * 100) {
+            points += 10;
+        } else if (cards[card].value === 15 || cards[card].value === 15 * 100) {
+            points += 15;
+        } else if (cards[card].value === 20 || cards[card].value === 20 * 100) {
+            points += 20;
+        }
+    }
+
+    return points;
 }
 
 function startTrick(winner) {
@@ -389,7 +436,7 @@ function doTrick() {
         if (data.exists()) {
             if (data.val().cards && Object.keys(data.val().cards).length === Object.keys(playerList).length) {
                 $('.player-card').addClass('marked').attr('onclick');
-                winTrick(data.val().cards, data.val().trump, data.val().trickSuite);
+                winTrick(data.val().cards, data.val().trump, data.val().trickSuite, data.val().kitty);
 
                 if (isHost)
                     firebase.database().ref(`/rooms/${ room }/game/tricks`).off();
@@ -547,7 +594,7 @@ function discardMarkedCards() {
             kitty[card] = cards[card];
             firebase.database().ref(`/rooms/${ room }/players/${ username }/cards/${ card }`).remove();
         });
-        firebase.database().ref(`/rooms/${ room }/players/${ username }`).update({ kitty: kitty });
+        firebase.database().ref(`/rooms/${ room }/game/tricks`).update({ kitty: kitty });
         $('.card.player-card').attr('onclick', '').addClass('marked');
     });
 
@@ -564,8 +611,9 @@ function discardMarkedCards() {
 }
 
 function setTrumpSuit() {
-    firebase.database().ref(`/rooms/${ room }/game/tricks`).update({ trump: $('#trump-select').val() });
-    firebase.database().ref(`/rooms/${ room }/cmd`).set('startTrick');
+    firebase.database().ref(`/rooms/${ room }/game/tricks`).update({ trump: $('#trump-select').val() }).then(function() {
+        firebase.database().ref(`/rooms/${ room }/cmd`).set('startTrick');
+    });
 }
 
 function startBidding() {
