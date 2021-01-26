@@ -622,7 +622,7 @@ function startBidding() {
     $('.card.player-card').attr('onclick', '').addClass('marked');
     firebase.database().ref(`/rooms/${ room }/game/bid`).on('value', (data) => {
         if (data.exists()) {
-            if (data.val().consPasses === Object.keys(playerList).length || data.val().bid >= 200) {
+            if (data.val().consPasses === Object.keys(playerList).length - 1 || data.val().bid >= 200) {
                 firebase.database().ref(`/rooms/${ room }/game/bid`).off();
                 winBid(data.val().bidder);
             } else if (data.val().bidder === username) {
